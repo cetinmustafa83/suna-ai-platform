@@ -43,7 +43,7 @@ install: install-backend install-frontend
 
 install-backend:
 	@echo "📦 Installing backend dependencies..."
-	cd backend && pip install -r requirements.txt
+	cd backend && poetry install
 
 install-frontend:
 	@echo "📦 Installing frontend dependencies..."
@@ -65,7 +65,7 @@ dev:
 
 dev-backend:
 	@echo "🐍 Starting backend development server..."
-	cd backend && uvicorn api:app --reload --port 8000
+	cd backend && poetry run uvicorn api:app --reload --port 8000
 
 dev-frontend:
 	@echo "⚛️ Starting frontend development server..."
@@ -77,7 +77,7 @@ test: test-backend test-frontend
 
 test-backend:
 	@echo "🧪 Running backend tests..."
-	cd backend && python -m pytest -v
+	cd backend && poetry run python -m pytest -v
 
 test-frontend:
 	@echo "🧪 Running frontend tests..."

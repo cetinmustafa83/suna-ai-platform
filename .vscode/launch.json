@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Backend API",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/api.py",
+            "module": "uvicorn",
+            "args": [
+                "api:app",
+                "--reload",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000"
+            ],
+            "cwd": "${workspaceFolder}/backend",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/backend/.env",
+            "justMyCode": false
+        },
+        {
+            "name": "Debug Agent",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/agent/run.py",
+            "cwd": "${workspaceFolder}/backend",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/backend/.env",
+            "justMyCode": false
+        }
+    ]
+}
