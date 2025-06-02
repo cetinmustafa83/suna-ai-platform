@@ -43,7 +43,13 @@ brew install redis
 brew install rabbitmq
 ```
 
-### 3. Umgebungsvariablen konfigurieren
+### 3. PostgreSQL Datenbank Setup (Lokal)
+Für die lokale Entwicklung mit Prisma wird eine PostgreSQL-Datenbank benötigt.
+- **Installation**: Installiere PostgreSQL (z.B. via `brew install postgresql` oder Docker).
+- **Datenbank erstellen**: Erstelle eine neue Datenbank für dieses Projekt (z.B. `suna_dev`).
+- **User erstellen**: Erstelle einen Datenbankbenutzer mit Passwort für den Zugriff auf diese Datenbank.
+
+### 4. Umgebungsvariablen konfigurieren
 
 #### Backend (`backend/.env`)
 Kopiere `backend/.env.example` zu `backend/.env` und konfiguriere die folgenden Variablen:
@@ -55,6 +61,9 @@ ENV_MODE=local
 # Setze auf "true", um das Supabase-basierte Authentifizierungssystem zu umgehen
 # und einen Mock-Benutzer für API-Anfragen zu verwenden.
 MOCK_AUTH_ENABLED=true 
+
+# PostgreSQL Datenbank URL (ersetze mit deinen lokalen Daten)
+DATABASE_URL="postgresql://DEIN_USER:DEIN_PASSWORT@localhost:5432/suna_dev?sslmode=prefer"
 
 # Für AI-Funktionalität (essenziell)
 ANTHROPIC_API_KEY=your_key_here
@@ -92,6 +101,34 @@ OPENAI_API_KEY=your_openai_key_if_needed_frontend
 **Hinweis:** Die `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_ANON_KEY` werden nicht mehr benötigt.
 
 ## 🚀 Entwicklung starten
+
+### Datenbank Migrationen (Prisma)
+Nachdem du deine `DATABASE_URL` in `backend/.env` konfiguriert hast und Änderungen am Prisma Schema (`backend/prisma/schema.prisma`) vorgenommen wurden:
+1.  **Migration erstellen und anwenden**:
+    ```bash
+    cd backend
+    poetry run prisma migrate dev --name <migration_name> 
+    # Ersetze <migration_name> mit einem beschreibenden Namen, z.B. init_admin_tables
+    ```
+    Dieser Befehl erstellt eine SQL-Migrationsdatei im Verzeichnis `backend/prisma/migrations/` und wendet sie auf deine lokale PostgreSQL-Datenbank an. Er generiert auch den Prisma Python Client.
+2.  **Prisma Client generieren (manuell, falls nötig)**:
+    Obwohl `prisma migrate dev` den Client generiert, kannst du ihn bei Bedarf manuell neu generieren:
+    ```bash
+    cd backend
+    poetry run prisma generate
+    ```
+    Der generierte Client befindet sich in `backend/prisma/generated/`.
+
+### Admin-Einstellungen und Globale Konfiguration
+Das System beinhaltet Admin-Seiten zur Verwaltung von globalen Seiteneinstellungen, editierbaren Inhalten und SEO-Metadaten. Diese werden in der PostgreSQL-Datenbank über Prisma verwaltet.
+- **Site Settings (`/admin/site-settings`)**: Ermöglicht das Management von globalen Key-Value-Paar Einstellungen.
+  - **Wichtiger Hinweis zur Initialisierung**: Beim ersten Start oder bei einer neuen Datenbank müssen möglicherweise einige grundlegende Site-Settings-Schlüssel manuell über die Admin-UI erstellt werden (z.B. `site_title`, `contact_email`). Alternativ könnte ein Skript zur Dateninitialisierung (Seeding) für die Datenbank entwickelt werden, um diese grundlegenden Einstellungen vorab zu füllen. Eine Liste empfohlener Schlüssel finden Sie direkt auf der Seite "Global Site Configuration".
+- **Editable Content (`/admin/editable-content`)**: Zur Verwaltung von Inhaltsblöcken auf verschiedenen Seiten.
+- **Page SEO (`/admin/page-seo`)**: Zur Verwaltung von SEO-Metadaten pro Seite.
+
+Stelle sicher, dass du als Admin-Benutzer angemeldet bist (z.B. `admin@example.com`), um auf diese Bereiche zugreifen zu können.
+
+### Server starten
 
 ### Option 1: Mit Docker (Empfohlen für Redis/RabbitMQ)
 ```bash

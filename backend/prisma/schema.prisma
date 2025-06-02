@@ -1,0 +1,42 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-py"
+  output   = "./generated" // Output directory relative to this schema file
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SiteSetting {
+  id    String @id @default(cuid())
+  key   String @unique // e.g., "site_name", "logo_url", "contact_email"
+  value String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EditableContent {
+  id        String @id @default(cuid())
+  pageSlug  String // e.g., "homepage", "chatpage"
+  blockKey  String // e.g., "hero_title", "footer_text"
+  content   String // Can be plain text, HTML, or JSON string
+  contentType String @default("text") // "text", "html", "json", "image_url"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pageSlug, blockKey])
+}
+
+model PageSEO {
+  id          String @id @default(cuid())
+  pageSlug    String @unique // e.g., "homepage", "/about", "/pricing"
+  title       String?
+  description String?
+  keywords    String? // Comma-separated
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

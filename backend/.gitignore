@@ -147,6 +147,9 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# Prisma
+prisma/generated/
+
 # Pyre type checker
 .pyre/
 

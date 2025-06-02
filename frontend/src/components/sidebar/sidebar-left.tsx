@@ -32,47 +32,59 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
+import { ShieldCheck } from 'lucide-react'; // Icon for Admin
 
 export function SidebarLeft({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   const { state, setOpen, setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
-  const [user, setUser] = useState<{
+  // const [user, setUser] = useState<{ // User state now comes from LocalAuth directly in useEffect or via AuthProvider
+  //   name: string;
+  //   email: string;
+  //   avatar: string;
+  //   isAdmin?: boolean; 
+  // }>({
+  //   name: 'Loading...',
+  //   email: 'loading@example.com',
+  //   avatar: '',
+  //   isAdmin: false,
+  // });
+  
+  // Use a combined state for user data including admin status
+  const [userData, setUserData] = useState<{
     name: string;
     email: string;
     avatar: string;
-  }>({
-    name: 'Loading...',
-    email: 'loading@example.com',
-    avatar: '',
-  });
+    isAdmin?: boolean;
+  } | null>(null);
+
 
   const pathname = usePathname();
 
-  // Fetch user data
+  // Fetch user data & admin status
   useEffect(() => {
     const fetchUserData = async () => {
-      // const supabase = createClient(); // Supabase client removed
-      const { data } = await LocalAuth.getUser(); // Use local auth
+      const authUser = LocalAuth.getMockUser(); // Get full MockUser object
 
-      if (data.user) {
-        setUser({
-          name: data.user.name || data.user.email?.split('@')[0] || 'User',
-          email: data.user.email || '',
-          avatar: '', // Mock avatar, or extend MockUser to include it
+      if (authUser) {
+        setUserData({
+          name: authUser.name || authUser.email?.split('@')[0] || 'User',
+          email: authUser.email || '',
+          avatar: '', // Mock avatar
+          isAdmin: authUser.isAdmin || false,
         });
       } else {
-        // Handle case where mock user is not logged in
-        setUser({
-          name: 'Guest',
-          email: '',
-          avatar: '',
-        });
+        setUserData(null); // No user logged in
       }
     };
 
     fetchUserData();
+    // Add an event listener for auth changes if users can log in/out while sidebar is mounted
+    // This ensures isAdmin status is updated if a different user logs in.
+    const handleAuthChange = () => fetchUserData();
+    window.addEventListener('mockAuthChange', handleAuthChange);
+    return () => window.removeEventListener('mockAuthChange', handleAuthChange);
   }, []);
 
   // Handle keyboard shortcuts (CMD+B) for consistency
@@ -169,6 +181,36 @@ export function SidebarLeft({
         </Link>
       </SidebarGroup>
         <NavAgents />
+        
+        {/* Admin Navigation Section - Visible only to admin users */}
+        {userData?.isAdmin && (
+          <SidebarGroup label="Admin Console" className="mt-4">
+            <Link href="/admin/site-settings">
+              <SidebarMenuButton className={cn({
+                'bg-primary/10 font-medium': pathname === '/admin/site-settings',
+              })}>
+                <ShieldCheck className="h-4 w-4 mr-2 text-destructive" />
+                Site Settings
+              </SidebarMenuButton>
+            </Link>
+            <Link href="/admin/editable-content">
+              <SidebarMenuButton className={cn({
+                'bg-primary/10 font-medium': pathname === '/admin/editable-content',
+              })}>
+                <ShieldCheck className="h-4 w-4 mr-2 text-destructive" />
+                Editable Content
+              </SidebarMenuButton>
+            </Link>
+            <Link href="/admin/page-seo">
+              <SidebarMenuButton className={cn({
+                'bg-primary/10 font-medium': pathname === '/admin/page-seo',
+              })}>
+                <ShieldCheck className="h-4 w-4 mr-2 text-destructive" />
+                Page SEO
+              </SidebarMenuButton>
+            </Link>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       {state !== 'collapsed' && (
         <div className="px-3 py-2">
@@ -186,7 +228,7 @@ export function SidebarLeft({
             </Tooltip>
           </div>
         )}
-        <NavUserWithTeams user={user} />
+        <NavUserWithTeams user={userData || { name: 'Guest', email: '', avatar: ''}} /> 
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -19,6 +19,9 @@ from agent import api as agent_api
 from sandbox import api as sandbox_api
 from services import billing as billing_api
 from services import transcription as transcription_api
+from api.routers import admin_site_settings_router # Import the admin site settings router
+from api.routers import admin_editable_content_router # Import the admin editable content router
+from api.routers import admin_page_seo_router # Import the admin page SEO router
 
 # Load environment variables (these will be available through config)
 load_dotenv()
@@ -138,6 +141,12 @@ from mcp_local import api as mcp_api
 app.include_router(mcp_api.router, prefix="/api")
 # Include the transcription router with a prefix
 app.include_router(transcription_api.router, prefix="/api")
+# Include the admin site settings router
+app.include_router(admin_site_settings_router.router) # Prefix is already defined in the router
+# Include the admin editable content router
+app.include_router(admin_editable_content_router.router) # Prefix is already defined in the router
+# Include the admin page SEO router
+app.include_router(admin_page_seo_router.router) # Prefix is already defined in the router
 
 @app.get("/api/health")
 async def health_check():

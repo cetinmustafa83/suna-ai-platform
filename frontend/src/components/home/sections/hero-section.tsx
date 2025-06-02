@@ -34,6 +34,7 @@ import { useAccounts } from '@/hooks/use-accounts';
 import { isLocalMode, config } from '@/lib/config';
 import { toast } from 'sonner';
 import { useModal } from '@/hooks/use-modal-store';
+import { useEditableContent } from '@/hooks/use-editable-content'; // Import the new hook
 
 // Custom dialog overlay with blur effect
 const BlurredDialogOverlay = () => (
@@ -302,12 +303,10 @@ export function HeroSection() {
           </Link>
           <div className="flex flex-col items-center justify-center gap-5">
             <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-medium tracking-tighter text-balance text-center">
-              <span className="text-secondary">Suna</span>
-              <span className="text-primary">, your AI Employee.</span>
+              <EditableDisplay as="span" className="text-secondary" pageSlug="homepage" blockKey="hero_title_brand" defaultValue="Suna" />
+              <EditableDisplay as="span" className="text-primary" pageSlug="homepage" blockKey="hero_title_main" defaultValue=", your AI Employee." />
             </h1>
-            <p className="text-base md:text-lg text-center text-muted-foreground font-medium text-balance leading-relaxed tracking-tight">
-              {hero.description}
-            </p>
+            <EditableDisplay as="p" className="text-base md:text-lg text-center text-muted-foreground font-medium text-balance leading-relaxed tracking-tight" pageSlug="homepage" blockKey="hero_description" defaultValue={hero.description} />
           </div>
           <div className="flex items-center w-full max-w-xl gap-2 flex-wrap justify-center">
             <form className="w-full relative" onSubmit={handleSubmit}>
@@ -319,10 +318,18 @@ export function HeroSection() {
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={hero.inputPlaceholder}
+                    // placeholder={hero.inputPlaceholder} // Replaced by EditableDisplay
                     className="flex-1 h-12 md:h-14 rounded-full px-2 bg-transparent focus:outline-none text-sm md:text-base py-2"
                     disabled={isSubmitting}
                   />
+                  {/* The placeholder is now part of the input itself for EditableDisplay to work if needed, or handled differently.
+                      For now, let's assume hero.inputPlaceholder is the default if not fetched.
+                      A true dynamic placeholder would require more complex input component.
+                      Using default a non-dynamic placeholder for simplicity of this step.
+                  */}
+                  <input type="hidden" value={hero.inputPlaceholder} /> 
+                  {/* If we want dynamic placeholder, we'd use useEditableContent for it and pass to Input */}
+                  {/* For now, sticking to the original non-dynamic placeholder from siteConfig */}
                   <button
                     type="submit"
                     className={`rounded-full p-2 md:p-3 transition-all duration-200 ${

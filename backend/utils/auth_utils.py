@@ -210,3 +210,31 @@ async def get_optional_user_id(request: Request) -> Optional[str]:
         return user_id
     except PyJWTError:
         return None
+
+async def get_current_admin_user(request: Request) -> str:
+    """
+    Ensures the current user is the designated mock admin user.
+    This is a simple auth check for admin-only routes during local/mock development.
+    It relies on MOCK_AUTH_ENABLED being true and the user ID matching the admin's MOCK_USER_ID.
+    """
+    if not config.MOCK_AUTH_ENABLED:
+        logger.warning("Admin endpoint accessed while MOCK_AUTH_ENABLED is false. Denying access.")
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access disabled: Mock auth is not enabled."
+        )
+
+    user_id = await get_current_user_id_from_jwt(request) # This will return MOCK_USER_ID if mock auth is on
+
+    if user_id == config.MOCK_USER_ID: # config.MOCK_USER_ID is the designated admin user ID in mock mode
+        logger.info(f"Admin access granted for user: {user_id}")
+        return user_id
+    else:
+        # This case should ideally not be reached if MOCK_AUTH_ENABLED=true,
+        # as get_current_user_id_from_jwt should return MOCK_USER_ID.
+        # But as a safeguard:
+        logger.warning(f"Admin access denied for user: {user_id}. Expected admin ID: {config.MOCK_USER_ID}")
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized for admin access."
+        )
