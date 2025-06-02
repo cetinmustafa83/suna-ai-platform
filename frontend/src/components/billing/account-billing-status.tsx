@@ -21,14 +21,14 @@ type Props = {
 // export default function AccountBillingStatus({ accountId, returnUrl }: Props) {
 export default function AccountBillingStatus({ returnUrl }: Props) {
   // const { session, isLoading: authLoading } = useAuth(); // Replaced by BillingContext
-  const {
-    currentSubscription,
-    isLoading: billingLoading,
-    error: billingError,
+  const { 
+    currentSubscription, 
+    isLoading: billingLoading, 
+    error: billingError, 
     updateMockSubscription,
     checkBillingStatus, // To refresh data from RxDB if needed
   } = useBilling();
-
+  
   // const [subscriptionData, setSubscriptionData] =
   //   useState<SubscriptionStatus | null>(null); // Comes from currentSubscription
   const [isManaging, setIsManaging] = useState(false); // For Stripe portal, can be repurposed or removed for local
@@ -68,10 +68,10 @@ export default function AccountBillingStatus({ returnUrl }: Props) {
         minutes_limit: newPlan.minutes_limit,
         current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() as any,
         // Reset usage or adjust as per mock logic
-        current_usage: 0,
+        current_usage: 0, 
       });
       // Optionally refresh billing status display after update
-      await checkBillingStatus(true);
+      await checkBillingStatus(true); 
     }
   };
 
@@ -124,7 +124,7 @@ export default function AccountBillingStatus({ returnUrl }: Props) {
               </div>
           </div>
         </div>
-
+        
         <h3 className="text-lg font-semibold mb-3">Change Mock Plan</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Button onClick={() => handleMockPlanChange({ price_id: 'mock_free_tier', plan_name: 'Free Plan (Mock)', minutes_limit: 100 })}>

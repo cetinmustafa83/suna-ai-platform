@@ -54,7 +54,7 @@ ENV_MODE=local
 # Aktiviere Mock-Authentifizierung für lokale Entwicklung
 # Setze auf "true", um das Supabase-basierte Authentifizierungssystem zu umgehen
 # und einen Mock-Benutzer für API-Anfragen zu verwenden.
-MOCK_AUTH_ENABLED=true
+MOCK_AUTH_ENABLED=true 
 
 # Für AI-Funktionalität (essenziell)
 ANTHROPIC_API_KEY=your_key_here

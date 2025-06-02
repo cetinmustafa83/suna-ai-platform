@@ -123,7 +123,7 @@ export async function resetPassword(prevState: any, formData: FormData): Promise
   console.log('Mock password update attempt.');
   // In a real local setup, you'd find the mock user and update their "password" if storing it.
   // For now, we just acknowledge. You might want to log out the user to force re-login.
-  // LocalAuth.logout();
+  // LocalAuth.logout(); 
   // LocalAuth.login(email, newPassword); // if you store/update password
 
   return {

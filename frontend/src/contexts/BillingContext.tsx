@@ -46,7 +46,7 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
   const [billingStatus, setBillingStatus] = useState<BillingStatusResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-
+  
   const lastCheckRef = useRef<number | null>(null);
   const checkInProgressRef = useRef<boolean>(false);
 
@@ -83,7 +83,7 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
       }
       const subData = subDoc.toJSON() as MockSubscriptionDocType;
       setCurrentSubscription(subData);
-
+      
       const authUser = await LocalAuth.getMockUser(); // Get current user for admin check
       if (authUser?.isAdmin) {
         console.log("BillingProvider: Admin user detected, overriding billing status.");
@@ -101,7 +101,7 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
         setBillingStatus({
           can_run: (subData.minutes_limit || 0) > (subData.current_usage || 0),
           message: (subData.minutes_limit || 0) > (subData.current_usage || 0) ? 'Usage within limits (Mock)' : 'Usage limit reached (Mock)',
-          subscription: {
+          subscription: { 
             price_id: subData.price_id || '',
             plan_name: subData.plan_name || '',
             minutes_limit: subData.minutes_limit,
@@ -135,20 +135,20 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
     if (!force && lastCheckRef.current && now - lastCheckRef.current < 10000) { // Reduced for local testing
       return !(billingStatus?.can_run ?? true);
     }
-
+    
     console.log("Performing mock checkBillingStatus (re-loading from RxDB)");
     checkInProgressRef.current = true;
     await loadOrInitializeSubscription(); // This will refresh currentSubscription and billingStatus
     lastCheckRef.current = now;
     checkInProgressRef.current = false;
-
+    
     // The can_run logic is now inside loadOrInitializeSubscription's setBillingStatus
     // Return based on the NEWLY fetched status
     // Need to access the state *after* it's updated by loadOrInitializeSubscription.
     // This is tricky because state updates are async. A better way might be for loadOrInitializeSubscription to return the status.
     // For now, we'll rely on the next render to have the updated billingStatus.
     // This immediate return value might be stale if called without await.
-    return !(billingStatus?.can_run ?? true);
+    return !(billingStatus?.can_run ?? true); 
   }, [loadOrInitializeSubscription, billingStatus]);
 
 
@@ -171,7 +171,7 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
         await subDoc.patch(updatePayload); // Use patch for partial updates
         const updatedSubData = subDoc.toJSON() as MockSubscriptionDocType;
         setCurrentSubscription(updatedSubData);
-
+        
         const authUser = await LocalAuth.getMockUser(); // Get current user for admin check
         if (authUser?.isAdmin) {
           console.log("BillingProvider (update): Admin user detected, overriding billing status.");

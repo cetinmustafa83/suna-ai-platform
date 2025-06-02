@@ -80,7 +80,7 @@ export const onAuthStateChange = (callback: (user: MockUser | null) => void): ((
 // Example of how to get user data, similar to supabase.auth.getUser()
 export const getUser = async (): Promise<{ data: { user: MockUser | null }, error: null }> => {
   // Simulate async behavior
-  await new Promise(resolve => setTimeout(resolve, 50));
+  await new Promise(resolve => setTimeout(resolve, 50)); 
   const user = getMockUser();
   return { data: { user }, error: null };
 };

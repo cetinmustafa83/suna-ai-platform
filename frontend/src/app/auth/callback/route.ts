@@ -16,12 +16,12 @@ export async function GET(request: Request) {
   // Handle the case where returnUrl is 'null' (string) or actual null
   const redirectPath =
     returnUrl && returnUrl !== 'null' ? returnUrl : '/dashboard';
-
+  
   // Ensure the redirect path is absolute.
   let absoluteRedirectUrl = redirectPath;
   if (!redirectPath.startsWith('http')) {
     absoluteRedirectUrl = `${origin}${redirectPath.startsWith('/') ? '' : '/'}${redirectPath}`;
   }
-
+  
   return NextResponse.redirect(absoluteRedirectUrl);
 }

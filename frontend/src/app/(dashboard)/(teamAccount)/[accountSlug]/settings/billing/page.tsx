@@ -45,7 +45,7 @@ export default function TeamBillingPage({
         // TODO: Fetch account by slug from RxDB 'accounts' collection
         // For now, we'll use a mock mapping or assume slug is account_id for mock
         const accountDoc = await db.accounts?.findOne({ selector: { slug: accountSlug } }).exec();
-
+        
         if (!accountDoc) {
           // Fallback: maybe the slug *is* the ID in some mock scenarios
           const accountByIdDoc = await db.accounts?.findOne(accountSlug).exec();
@@ -64,7 +64,7 @@ export default function TeamBillingPage({
           const accountUserDoc = await db.account_users?.findOne({ selector: { account_id: accountDoc.id, user_id: currentUserId } }).exec();
           setIsOwner(accountUserDoc?.account_role === 'owner');
         }
-
+        
       } catch (err) {
         setError('Failed to load team account data or role.');
         console.error(err);
@@ -99,7 +99,7 @@ export default function TeamBillingPage({
       </Alert>
     );
   }
-
+  
   // teamAccountId should be set if isOwner is true after loading.
   // If teamAccountId is still null here, it implies an issue.
   if (!teamAccountId) {

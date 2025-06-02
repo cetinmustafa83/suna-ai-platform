@@ -116,7 +116,7 @@ export const getProjects = async (): Promise<Project[]> => {
     }
 
     // TODO: Use a proper mock account ID or derive from user when multi-account is implemented
-    const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`;
+    const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`; 
 
     console.log(`[RxDB] Fetching projects for account_id: ${MOCK_ACCOUNT_ID}`);
     const db = await getDatabase();
@@ -125,7 +125,7 @@ export const getProjects = async (): Promise<Project[]> => {
       // await db.addCollections({ projects: { schema: projectSchema } }); // Example: Add if missing, ensure schema is imported
       return [];
     }
-
+    
     const projectsQuery = db.projects.find({
       selector: {
         // account_id: MOCK_ACCOUNT_ID // Filter by account_id once field is in schema and data
@@ -178,7 +178,7 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
       handleApiError(new Error(`Project ${projectId} not found in RxDB`), { operation: 'load project', resource: `project ${projectId}` });
       return null;
     }
-
+    
     const plainDoc = projectDoc.toJSON();
     const MOCK_ACCOUNT_ID = `mock-account-for-${(await LocalAuth.getUser()).data.user?.id || 'unknown_user'}`;
 
@@ -245,7 +245,7 @@ export const createProject = async (
       console.warn("[RxDB] projects collection not found for createProject.");
       throw new Error("Projects collection not available");
     }
-
+    
     const newProjectId = uuidv4();
     const newProjectData = {
       id: newProjectId, // RxDB uses 'id' as primary key by default in schemas
@@ -260,7 +260,7 @@ export const createProject = async (
 
     const newDoc = await db.projects.insert(newProjectData);
     console.log('[RxDB] Project created:', newDoc.toJSON());
-
+    
     // Return data conforming to Project type, mapping 'id' from RxDB to 'id' in Project
     return { ...newDoc.toJSON(), id: newDoc.id } as Project;
 
@@ -328,7 +328,7 @@ export const deleteProject = async (projectId: string): Promise<void> => {
     if (!projectDoc) {
       console.warn(`Project with ID ${projectId} not found for deletion.`);
       // Depending on desired behavior, either throw or return successfully
-      return;
+      return; 
     }
     await projectDoc.remove();
     console.log(`[RxDB] Project ${projectId} deleted.`);
@@ -455,10 +455,10 @@ export const createThread = async (projectId: string): Promise<Thread> => {
       is_public: false,
       // metadata: {} // Add if needed
     };
-
+    
     const newDoc = await db.threads.insert(newThreadData);
     console.log('[RxDB] Thread created:', newDoc.toJSON());
-
+    
     return { ...newDoc.toJSON(), thread_id: newDoc.id } as Thread; // Map 'id' to 'thread_id'
 
   } catch (err) {
@@ -486,7 +486,7 @@ export const addUserMessage = async (
       console.warn("[RxDB] messages collection not found for addUserMessage.");
       throw new Error("Messages collection not available");
     }
-
+    
     const newMessageId = uuidv4();
     const newMessageData = {
       id: newMessageId, // RxDB uses 'id'
@@ -505,7 +505,7 @@ export const addUserMessage = async (
 
     const newDoc = await db.messages.insert(newMessageData);
     console.log('[RxDB] User message added:', newDoc.toJSON());
-
+    
     // Map to Message type, ensure all fields align with your Message type definition
     return {
       // id: newDoc.id, // if Message type has id
@@ -539,7 +539,7 @@ export const getMessages = async (threadId: string): Promise<Message[]> => {
       sort: [{ created_at: 'asc' }]
     });
     const messagesDocs = await messagesQuery.exec();
-
+    
     console.log('[RxDB] Raw messages from DB:', messagesDocs.length, messagesDocs);
 
     const mappedMessages: Message[] = messagesDocs.map(doc => {
@@ -554,7 +554,7 @@ export const getMessages = async (threadId: string): Promise<Message[]> => {
         // ... other fields like created_at, attachments, metadata
       } as Message; // Cast as Message, ensure all required fields are present
     });
-
+    
     return mappedMessages.filter(msg => msg.type !== 'cost' && msg.type !== 'summary'); // Post-filter if not in query
 
   } catch (err) {

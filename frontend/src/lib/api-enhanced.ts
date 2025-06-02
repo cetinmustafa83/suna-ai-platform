@@ -44,19 +44,19 @@ export const projectsApi = {
         console.warn("[RxDB-Enhanced] projects collection not found.");
         return [];
       }
-
+      
       const projectsQuery = db.projects.find({
         selector: {
           // account_id: MOCK_ACCOUNT_ID // TODO: Add account_id to project schema for filtering
         }
       });
       const projectsDocs = await projectsQuery.exec();
-
+      
       const mappedProjects: Project[] = projectsDocs.map(doc => ({
         ...doc.toJSON(),
         id: doc.id, // Ensure 'id' is mapped if RxDB uses a different primary key name internally
       })) as Project[];
-
+      
       console.log('[RxDB-Enhanced] Mapped projects:', mappedProjects.length);
       return mappedProjects;
     } catch (error) {
@@ -80,7 +80,7 @@ export const projectsApi = {
         console.warn(`[RxDB-Enhanced] Project ${projectId} not found.`);
         return null;
       }
-
+      
       const plainDoc = projectDoc.toJSON();
       const MOCK_ACCOUNT_ID = `mock-account-for-${(await LocalAuth.getUser()).data.user?.id || 'unknown_user'}`;
 
@@ -116,7 +116,7 @@ export const projectsApi = {
       console.log(`[RxDB-Enhanced] Creating project for account_id: ${accountId}`);
       const db = await getDatabase();
       if (!db.projects) throw new Error("Projects collection not available");
-
+      
       const newProjectId = uuidv4();
       const newProjectRxData = {
         id: newProjectId,
@@ -198,7 +198,7 @@ export const threadsApi = {
         return [];
       }
 
-      const selector: any = {
+      const selector: any = { 
         // account_id: MOCK_ACCOUNT_ID // TODO: Add account_id to thread schema for filtering
       };
       if (projectId) {
@@ -207,7 +207,7 @@ export const threadsApi = {
 
       const threadsQuery = db.threads.find({ selector });
       const threadsDocs = await threadsQuery.exec();
-
+      
       const mappedThreads: Thread[] = threadsDocs.map(doc => ({
         ...doc.toJSON(),
         thread_id: doc.id, // Map RxDB 'id' to 'thread_id'

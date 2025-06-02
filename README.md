@@ -17,7 +17,7 @@
 🔍 **Smart Search** - Web crawling, data extraction, and research automation  
 ⚡ **Real-time Execution** - Isolated Docker environments for secure agent operations  
 📊 **Dashboard & Analytics** - Comprehensive monitoring and management interface  
-🔐 **Enterprise Ready** - Pluggable authentication (local mock for dev), team management, billing integration
+🔐 **Enterprise Ready** - Pluggable authentication (local mock for dev), team management, billing integration  
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue)](./LICENSE)
 [![GitHub Repo stars](https://img.shields.io/github/stars/cetinmustafa83/suna-ai-platform)](https://github.com/cetinmustafa83/suna-ai-platform)

@@ -36,17 +36,17 @@ async def upload_base64_image(base64_data: str, bucket_name: str = "browser-scre
     #     # Remove data URL prefix if present
     #     if base64_data.startswith('data:'):
     #         base64_data = base64_data.split(',')[1]
-
+        
     #     # Decode base64 data
     #     image_data = base64.b64decode(base64_data)
-
+        
     #     # Generate unique filename
     #     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     #     unique_id = str(uuid.uuid4())[:8]
     #     filename = f"image_{timestamp}_{unique_id}.png"
         
     #     # This part needs a new storage client if not using Supabase
-    #     # db = DBConnection()
+    #     # db = DBConnection() 
     #     # client = await db.client
     #     # storage_response = await client.storage.from_(bucket_name).upload(
     #     #     filename,

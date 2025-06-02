@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     setIsLoading(true);
-
+    
     const unsubscribe = LocalAuth.onAuthStateChange((currentUser) => {
       setUser(currentUser);
       setIsLoading(false);
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const loggedInUser = LocalAuth.login(email, name);
     // setUser(loggedInUser); // onAuthStateChange will handle this
     // Potentially redirect here or let the calling component handle it
-    // router.push('/dashboard');
+    // router.push('/dashboard'); 
     return loggedInUser;
   }, []);
 

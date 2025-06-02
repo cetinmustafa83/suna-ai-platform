@@ -78,7 +78,7 @@ interface PricingTierProps {
   returnUrl: string;
   insideDialog?: boolean;
   // For mock updates
-  updateMockSubscription?: (newPlanData: Partial<SubscriptionStatus & { id?: string, account_id?: string }>) => Promise<void>;
+  updateMockSubscription?: (newPlanData: Partial<SubscriptionStatus & { id?: string, account_id?: string }>) => Promise<void>; 
 }
 
 // Components
@@ -217,8 +217,8 @@ function PricingTier({
 
     if (isLocalMode() && tier.name !== 'Enterprise') { // Enterprise might still link to a contact form
       if (updateMockSubscription) {
-        const selectedPlanDetails = tier.name === 'Custom' && tier.upgradePlans ?
-                                   tier.upgradePlans.find(p => p.hours === localSelectedPlan) :
+        const selectedPlanDetails = tier.name === 'Custom' && tier.upgradePlans ? 
+                                   tier.upgradePlans.find(p => p.hours === localSelectedPlan) : 
                                    tier;
         const mockPlanData = {
           // id: currentSubscription?.id, // Let updateMockSubscription handle ID/accountId logic
@@ -241,7 +241,7 @@ function PricingTier({
       }
       return;
     }
-
+    
     // Original Stripe logic for non-local mode or Enterprise tier
     if (isLoading[planStripePriceId]) {
       return;
@@ -655,13 +655,13 @@ export function PricingSection({
   // const [isFetchingPlan, setIsFetchingPlan] = useState(true); // From BillingContext
   // const [isAuthenticated, setIsAuthenticated] = useState(false); // From LocalAuth
 
-  const {
-    currentSubscription,
-    isLoading: isBillingContextLoading,
+  const { 
+    currentSubscription, 
+    isLoading: isBillingContextLoading, 
     updateMockSubscription: contextUpdateMockSubscription,
     checkBillingStatus: refreshBillingContextSubscription,
   } = useBilling();
-
+  
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({}); // For individual plan button loading states
   const [isAuthenticatedUser, setIsAuthenticatedUser] = useState(false);
 

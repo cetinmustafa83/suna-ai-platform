@@ -177,14 +177,14 @@ async def verify_thread_access(client, thread_id: str, user_id: str):
         account_user_result = await client.schema('basejump').from_('account_user').select('account_role').eq('user_id', user_id).eq('account_id', account_id).execute()
         if account_user_result.data and len(account_user_result.data) > 0:
             return True
-
+            
     raise HTTPException(status_code=403, detail="Not authorized to access this thread")
 
 async def get_optional_user_id(request: Request) -> Optional[str]:
     """
     Extract the user ID from the JWT in the Authorization header if present,
     but don't require authentication. Returns None if no valid token is found.
-    If config.MOCK_AUTH_ENABLED is true, returns mock user ID if any auth header is present,
+    If config.MOCK_AUTH_ENABLED is true, returns mock user ID if any auth header is present, 
     or None otherwise (to simulate optional presence).
     """
     auth_header = request.headers.get('Authorization')

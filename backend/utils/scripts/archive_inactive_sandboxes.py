@@ -97,7 +97,7 @@ async def get_all_projects() -> List[Dict[str, Any]]:
         logger.error("DBConnection not available (Supabase was removed). Cannot get all projects.")
         print("Database connection (Supabase) has been removed. This script cannot function.")
         return []
-
+        
     client = await db_connection.client # This line will fail if db_connection cannot be initialized
     
     # Initialize variables for pagination

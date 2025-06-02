@@ -10,7 +10,7 @@ export default async function PersonalAccountBillingPage() {
   // const { data: personalAccount } = await supabaseClient.rpc( // Supabase RPC removed
   //   'get_personal_account',
   // );
-
+  
   // The AccountBillingStatus component will now fetch its own accountId via context/local auth
   // or this page could be converted to a client component if server-side fetching of mock ID is needed.
   // For now, we assume AccountBillingStatus is a client component and can use BillingContext.
@@ -19,7 +19,7 @@ export default async function PersonalAccountBillingPage() {
     <div>
       <AccountBillingStatus
         // accountId prop might no longer be needed if AccountBillingStatus uses BillingContext
-        // accountId={personalAccount.account_id}
+        // accountId={personalAccount.account_id} 
         returnUrl={`${returnUrl}/settings/billing`}
       />
     </div>

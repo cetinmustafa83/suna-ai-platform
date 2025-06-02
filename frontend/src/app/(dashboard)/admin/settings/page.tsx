@@ -8,7 +8,7 @@ import { RxDocument } from 'rxdb';
 // Assuming ConfigDocType is the type derived from your configSchema.
 // You might need to define this type properly based on your schema.
 // For now, using a generic one.
-// import { ConfigDocType } from '@/lib/rxdb/schemas';
+// import { ConfigDocType } from '@/lib/rxdb/schemas'; 
 interface ConfigDocType {
   id: string;
   enable_team_accounts?: boolean;
@@ -113,7 +113,7 @@ const AdminSettingsPage = () => {
     // This case is technically handled by the error state above, but as a fallback.
     return <div>Access Denied. You must be an admin to view this page.</div>;
   }
-
+  
   if (!settings) {
     return <div>No settings document found, and could not create one.</div>
   }
@@ -123,7 +123,7 @@ const AdminSettingsPage = () => {
       <h1>Admin Settings (Local Mock)</h1>
       <p>Manage application configuration stored in RxDB.</p>
       <br />
-
+      
       {Object.keys(settings).filter(key => key !== 'id' && key !== '_rev' && !key.startsWith('_')).map(key => {
         const value = settings[key as keyof ConfigDocType];
         if (typeof value === 'boolean') {
@@ -174,8 +174,8 @@ const AdminSettingsPage = () => {
         )
       })}
 
-      <button
-        onClick={handleSaveSettings}
+      <button 
+        onClick={handleSaveSettings} 
         disabled={isLoading}
         style={{ padding: '10px 20px', background: 'blue', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
       >

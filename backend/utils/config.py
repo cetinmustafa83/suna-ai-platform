@@ -128,7 +128,7 @@ class Configuration:
     MODEL_TO_USE: Optional[str] = "anthropic/claude-3-7-sonnet-latest"
     
     # Supabase configuration (Removed - Backend is now DB-agnostic for core logic, specific DB connections would be handled elsewhere if needed)
-    # SUPABASE_URL: str
+    # SUPABASE_URL: str 
     # SUPABASE_ANON_KEY: str
     # SUPABASE_SERVICE_ROLE_KEY: str
     
@@ -187,12 +187,12 @@ class Configuration:
         except ValueError:
             logger.warning(f"Invalid ENV_MODE: {env_mode_str}, defaulting to LOCAL")
             self.ENV_MODE = EnvMode.LOCAL
-
+        
         # Load MOCK_AUTH_ENABLED specifically as it's used by other modules like auth_utils
         # and needs to be available early and consistently.
         self.MOCK_AUTH_ENABLED = os.getenv("MOCK_AUTH_ENABLED", "false").lower() == "true"
         # Load MOCK_USER_ID from env if provided, otherwise use class default
-        self.MOCK_USER_ID = os.getenv("MOCK_USER_ID", self.MOCK_USER_ID)
+        self.MOCK_USER_ID = os.getenv("MOCK_USER_ID", self.MOCK_USER_ID) 
             
         logger.info(f"Environment mode: {self.ENV_MODE.value}")
         logger.info(f"Mock Auth Enabled: {self.MOCK_AUTH_ENABLED}")

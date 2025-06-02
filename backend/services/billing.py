@@ -302,7 +302,7 @@ async def create_checkout_session(
         # Simulate a successful checkout creation or plan change without Stripe
         # This needs to align with what the frontend expects from CreateCheckoutSessionResponse
         return {
-            "session_id": f"mock_cs_session_{uuid.uuid4()}",
+            "session_id": f"mock_cs_session_{uuid.uuid4()}", 
             "url": request.success_url, # Redirect to success URL as if payment was done
             "status": "updated", # Simulate an update or new checkout
             "message": "Successfully switched to mock plan.",
@@ -828,7 +828,7 @@ async def check_status(
                 "subscription": {
                     "price_id": "mock_standard_tier_backend",
                     "plan_name": "Mock Standard Plan",
-                    "minutes_limit": 200
+                    "minutes_limit": 200 
                 }
             }
     try:

@@ -123,7 +123,7 @@ export async function getDatabase(): Promise<RxDatabase> {
       // This can happen if collections already exist, especially with HMR in dev.
       // Depending on RxDB setup, it might not be an issue, or might need specific handling.
     }
-
+    
     // Log all collections
     // console.log('Current collections:', Object.keys(db.collections));
 
