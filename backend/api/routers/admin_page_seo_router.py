@@ -133,3 +133,27 @@ async def delete_page_seo_by_slug(page_slug: str):
     except PrismaError as e:
         logger.error(f"PrismaError deleting PageSEO entry for {page_slug}: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting PageSEO entry: {e}")
+
+# --- Public GET Endpoint (No Admin Auth Required) ---
+
+@router.get("/public/{page_slug}", response_model=PageSEOResponse, tags=["Public SEO"])
+async def public_get_page_seo_by_slug(page_slug: str):
+    """
+    Get a specific public PageSEO entry by its pageSlug.
+    """
+    try:
+        logger.info(f"Public fetch for PageSEO entry with pageSlug: {page_slug}")
+        seo_entry = await PrismaPageSEO.prisma().find_unique(where={"pageSlug": page_slug})
+        if not seo_entry:
+            logger.warn(f"Public PageSEO entry with pageSlug '{page_slug}' not found.")
+            # For public consumption, typically we might return a 404 or an empty/default object.
+            # Raising 404 is fine if the frontend is prepared to handle it (e.g., use defaults).
+            raise HTTPException(status_code=404, detail=f"PageSEO entry with pageSlug '{page_slug}' not found")
+        logger.info(f"Successfully fetched public PageSEO entry for pageSlug: {page_slug}")
+        return PageSEOResponse.model_validate(seo_entry)
+    except RecordNotFoundError: # Should be caught by the check above
+        logger.warn(f"Public PageSEO entry with pageSlug '{page_slug}' not found (RecordNotFoundError).")
+        raise HTTPException(status_code=404, detail=f"PageSEO entry with pageSlug '{page_slug}' not found")
+    except PrismaError as e:
+        logger.error(f"PrismaError fetching public PageSEO entry for {page_slug}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching public PageSEO entry: {e}")

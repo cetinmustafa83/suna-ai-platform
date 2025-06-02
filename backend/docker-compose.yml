@@ -1,3 +1,11 @@
+# NOTE: This docker-compose setup is for local development.
+# It includes backend services, Redis, and RabbitMQ.
+# For full functionality with Prisma and a PostgreSQL database (when MOCK_AUTH_ENABLED=false 
+# or if backend services require DB access even in mock mode for non-auth tasks), 
+# you would need to add a PostgreSQL service here and ensure the `DATABASE_URL` in `.env` 
+# points to it (e.g., DATABASE_URL="postgresql://user:password@postgres:5432/suna_dev").
+# The current setup assumes PostgreSQL is running externally if not in full mock data mode.
+
 services:
   api:
     image: ghcr.io/suna-ai/suna-backend:latest

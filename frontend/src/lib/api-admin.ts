@@ -188,7 +188,7 @@ export async function deleteEditableContentByKey(pageSlug: string, blockKey: str
 export async function getPublicEditableContent(pageSlug: string, blockKey: string): Promise<EditableContentResponse | null> {
   try {
     const response: ApiResponse<EditableContentResponse> = await apiClient.get(
-      `${editableContentApiPrefix}/key/${encodeURIComponent(pageSlug)}/${encodeURIComponent(blockKey)}`
+      `${editableContentApiPrefix}/public/key/${encodeURIComponent(pageSlug)}/${encodeURIComponent(blockKey)}` // Added /public
     );
     if (!response.success || !response.data) {
       // For public fetching, we might not want to throw an error if content is simply not found,
@@ -205,7 +205,9 @@ export async function getPublicEditableContent(pageSlug: string, blockKey: strin
 
 export async function getPublicEditableContentsByPage(pageSlug: string): Promise<EditableContentResponse[]> {
   try {
-    let url = `${editableContentApiPrefix}/?pageSlug=${encodeURIComponent(pageSlug)}`;
+    // The admin endpoint for listing by pageSlug was GET /admin/editable-content/?pageSlug=...
+    // The new public one is GET /admin/editable-content/public/page/{pageSlug}
+    let url = `${editableContentApiPrefix}/public/page/${encodeURIComponent(pageSlug)}`;
     const response: ApiResponse<EditableContentResponse[]> = await apiClient.get(url);
     if (!response.success || !response.data) {
       console.warn(`Failed to list public editable contents for page ${pageSlug}:`, response.error?.message);
@@ -292,5 +294,23 @@ export async function deletePageSEOBySlug(pageSlug: string): Promise<void> {
   );
   if (!response.success) {
     throw response.error || new Error(`Failed to delete PageSEO entry: ${pageSlug}`);
+  }
+}
+
+// --- Public Getters for PageSEO (using existing admin GET endpoints for now) ---
+export async function getPublicPageSEO(pageSlug: string): Promise<PageSEOResponse | null> {
+  try {
+    const response: ApiResponse<PageSEOResponse> = await apiClient.get(
+      `${pageSEOApiPrefix}/public/${encodeURIComponent(pageSlug)}` // Added /public
+    );
+    if (!response.success || !response.data) {
+      // For public fetching, return null if not found, allowing fallback to defaults.
+      console.warn(`Failed to get public PageSEO for slug "${pageSlug}":`, response.error?.message);
+      return null;
+    }
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching public PageSEO for slug "${pageSlug}":`, error);
+    return null; // Return null on outright error for graceful fallback
   }
 }

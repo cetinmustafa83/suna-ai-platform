@@ -205,3 +205,45 @@ async def delete_editable_content_by_composite_key(page_slug: str, block_key: st
     except PrismaError as e:
         logger.error(f"PrismaError deleting content block for page '{page_slug}' key '{block_key}': {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting content block: {e}")
+
+
+# --- Public GET Endpoints (No Admin Auth Required) ---
+
+@router.get("/public/key/{page_slug}/{block_key}", response_model=EditableContentResponse, tags=["Public Content"])
+async def public_get_editable_content_by_composite_key(page_slug: str, block_key: str):
+    """
+    Get a specific public editable content block by pageSlug and blockKey.
+    """
+    try:
+        logger.info(f"Public fetch for content block with pageSlug: {page_slug}, blockKey: {block_key}")
+        content = await PrismaEditableContent.prisma().find_unique(
+            where={"pageSlug_blockKey": {"pageSlug": page_slug, "blockKey": block_key}}
+        )
+        if not content:
+            logger.warn(f"Public content block for page '{page_slug}' key '{block_key}' not found.")
+            raise HTTPException(status_code=404, detail=f"Content block for page '{page_slug}' key '{block_key}' not found")
+        logger.info(f"Successfully fetched public content block for page '{page_slug}' key '{block_key}'")
+        return EditableContentResponse.model_validate(content)
+    except RecordNotFoundError: # Should be caught by the check above, but good for safety
+        logger.warn(f"Public content block for page '{page_slug}' key '{block_key}' not found (RecordNotFoundError).")
+        raise HTTPException(status_code=404, detail=f"Content block for page '{page_slug}' key '{block_key}' not found")
+    except PrismaError as e:
+        logger.error(f"PrismaError fetching public content block for page '{page_slug}' key '{block_key}': {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching public content block: {e}")
+
+@router.get("/public/page/{page_slug}", response_model=List[EditableContentResponse], tags=["Public Content"])
+async def public_list_editable_content_by_page(page_slug: str):
+    """
+    List all public editable content blocks for a specific pageSlug.
+    """
+    try:
+        logger.info(f"Public fetch for content blocks on pageSlug: {page_slug}")
+        contents = await PrismaEditableContent.prisma().find_many(
+            where={"pageSlug": page_slug},
+            order={"createdAt": "asc"}
+        )
+        logger.info(f"Found {len(contents)} public content blocks for pageSlug {page_slug}.")
+        return [EditableContentResponse.model_validate(c) for c in contents]
+    except PrismaError as e:
+        logger.error(f"PrismaError listing public content blocks for pageSlug {page_slug}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error listing public content blocks: {e}")
