@@ -10,22 +10,35 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { UserIcon } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server'; // Kept for data fetching for now
+// import { redirect } from 'next/navigation'; // redirect is part of the signOut action
+import { signOut } from '@/app/auth/actions'; // Import the updated signOut action
 
 export default async function UserAccountButton() {
-  const supabaseClient = await createClient();
-  const { data: personalAccount } = await supabaseClient.rpc(
-    'get_personal_account',
-  );
+  const supabaseClient = await createClient(); // Kept for data fetching
+  // TODO: Replace this RPC call with local data fetching (e.g. RxDB or mock)
+  // For now, if supabaseClient is null or errors due to no auth, this might fail.
+  // Consider providing mock data for personalAccount if this breaks.
+  let personalAccount = { name: 'User', email: 'user@example.com' };
+  try {
+    const { data } = await supabaseClient.rpc(
+      'get_personal_account',
+    );
+    if (data) {
+      personalAccount = data;
+    } else {
+      console.warn("Failed to fetch personal account, using mock data for UserAccountButton.");
+    }
+  } catch (error) {
+    console.warn("Error fetching personal account, using mock data for UserAccountButton:", error);
+  }
+  // const signOut = async () => { // Original server action removed
+  //   'use server';
 
-  const signOut = async () => {
-    'use server';
-
-    const supabase = await createClient();
-    await supabase.auth.signOut();
-    return redirect('/');
-  };
+  //   const supabase = await createClient();
+  //   await supabase.auth.signOut();
+  //   return redirect('/');
+  // };
 
   return (
     <DropdownMenu>

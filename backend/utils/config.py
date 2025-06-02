@@ -38,6 +38,8 @@ class Configuration:
     
     # Environment mode
     ENV_MODE: EnvMode = EnvMode.LOCAL
+    MOCK_AUTH_ENABLED: bool = False # Default to false, will be overridden by env var
+    MOCK_USER_ID: str = "mock-user-id-backend" # Define default mock user ID
     
     # Subscription tier IDs - Production
     STRIPE_FREE_TIER_ID_PROD: str = 'price_1RILb4G6l1KZGqIrK4QLrx9i'
@@ -125,10 +127,10 @@ class Configuration:
     # Model configuration
     MODEL_TO_USE: Optional[str] = "anthropic/claude-3-7-sonnet-latest"
     
-    # Supabase configuration
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
-    SUPABASE_SERVICE_ROLE_KEY: str
+    # Supabase configuration (Removed - Backend is now DB-agnostic for core logic, specific DB connections would be handled elsewhere if needed)
+    # SUPABASE_URL: str
+    # SUPABASE_ANON_KEY: str
+    # SUPABASE_SERVICE_ROLE_KEY: str
     
     # Redis configuration
     REDIS_HOST: str
@@ -185,8 +187,16 @@ class Configuration:
         except ValueError:
             logger.warning(f"Invalid ENV_MODE: {env_mode_str}, defaulting to LOCAL")
             self.ENV_MODE = EnvMode.LOCAL
+
+        # Load MOCK_AUTH_ENABLED specifically as it's used by other modules like auth_utils
+        # and needs to be available early and consistently.
+        self.MOCK_AUTH_ENABLED = os.getenv("MOCK_AUTH_ENABLED", "false").lower() == "true"
+        # Load MOCK_USER_ID from env if provided, otherwise use class default
+        self.MOCK_USER_ID = os.getenv("MOCK_USER_ID", self.MOCK_USER_ID)
             
         logger.info(f"Environment mode: {self.ENV_MODE.value}")
+        logger.info(f"Mock Auth Enabled: {self.MOCK_AUTH_ENABLED}")
+        logger.info(f"Mock User ID: {self.MOCK_USER_ID}")
         
         # Load configuration from environment variables
         self._load_from_env()

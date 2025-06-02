@@ -46,7 +46,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { createClient } from '@/lib/supabase/client';
+// import { createClient } from '@/lib/supabase/client'; // Supabase client removed
+import { signOut as signOutAction } from '@/app/auth/actions'; // Import the signOut action
 import { useTheme } from 'next-themes';
 
 export function NavUserWithTeams({
@@ -140,9 +141,11 @@ export function NavUserWithTeams({
   };
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/auth');
+    // const supabase = createClient(); // Supabase client removed
+    // await supabase.auth.signOut(); // Supabase signOut removed
+    await signOutAction(); // Use the signOut action
+    router.push('/auth'); // router.push can be kept, or rely on action's redirect
+    router.refresh(); // Ensure re-fetch of server components after sign out
   };
 
   const getInitials = (name: string) => {

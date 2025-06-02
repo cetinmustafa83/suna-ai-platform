@@ -31,16 +31,19 @@ export const apiClient = {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      // const supabase = createClient(); // Supabase client removed
+      // const { data: { session } } = await supabase.auth.getSession(); // Supabase session removed
+      const { data: authData } = await LocalAuth.getUser(); // Use LocalAuth
+      const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...fetchOptions.headers as Record<string, string>,
       };
 
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
+      // TODO: Review if backend needs a specific token structure or if 'mock-token-for-local-dev' is fine
+      if (mockSession?.access_token) {
+        headers['Authorization'] = `Bearer ${mockSession.access_token}`;
       }
 
       const response = await fetch(url, {

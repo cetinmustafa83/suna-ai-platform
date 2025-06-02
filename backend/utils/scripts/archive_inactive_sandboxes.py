@@ -26,7 +26,8 @@ from dotenv import load_dotenv
 # Load script-specific environment variables
 load_dotenv(".env")
 
-from services.supabase import DBConnection
+# from services.supabase import DBConnection # Removed Supabase
+from utils.config import config # To check MOCK_AUTH_ENABLED
 from sandbox.sandbox import daytona
 from utils.logger import logger
 
@@ -42,15 +43,24 @@ async def get_active_billing_customer_account_ids() -> Set[str]:
         Set of account_ids that have an active billing customer record
     """
     global db_connection
+    if config.MOCK_AUTH_ENABLED:
+        logger.warning("MOCK_AUTH_ENABLED is true. archive_inactive_sandboxes script relies on direct DB access and will not run effectively in this mode.")
+        print("MOCK_AUTH_ENABLED is true. This script requires direct database access for billing info and will exit.")
+        return set()
+
     if db_connection is None:
-        db_connection = DBConnection()
+        # db_connection = DBConnection() # DBConnection from Supabase is removed
+        logger.error("DBConnection not available (Supabase was removed). Cannot get active billing customers.")
+        print("Database connection (Supabase) has been removed. This script cannot function.")
+        return set()
+
+    client = await db_connection.client # This line will fail if db_connection cannot be initialized
     
-    client = await db_connection.client
-    
-    # Print the Supabase URL being used
-    print(f"Using Supabase URL: {os.getenv('SUPABASE_URL')}")
+    # Print the Supabase URL being used (this will be None or error if not set)
+    # print(f"Using Supabase URL: {os.getenv('SUPABASE_URL')}") # Supabase URL is removed
     
     # Query all account_ids from billing_customers where active=true
+    # This will fail if client is not a Supabase client
     result = await client.schema('basejump').from_('billing_customers').select('account_id, active').execute()
     
     # Print the query result
@@ -77,10 +87,18 @@ async def get_all_projects() -> List[Dict[str, Any]]:
         List of projects with their sandbox information
     """
     global db_connection
+    if config.MOCK_AUTH_ENABLED:
+        logger.warning("MOCK_AUTH_ENABLED is true. archive_inactive_sandboxes script relies on direct DB access and will not run effectively in this mode.")
+        print("MOCK_AUTH_ENABLED is true. This script requires direct database access for project info and will exit.")
+        return []
+
     if db_connection is None:
-        db_connection = DBConnection()
-    
-    client = await db_connection.client
+        # db_connection = DBConnection() # DBConnection from Supabase is removed
+        logger.error("DBConnection not available (Supabase was removed). Cannot get all projects.")
+        print("Database connection (Supabase) has been removed. This script cannot function.")
+        return []
+
+    client = await db_connection.client # This line will fail if db_connection cannot be initialized
     
     # Initialize variables for pagination
     all_projects = []
@@ -259,10 +277,37 @@ async def main():
     try:
         # Initialize global DB connection
         global db_connection
-        db_connection = DBConnection()
-        
+        # db_connection = DBConnection() # DBConnection from Supabase is removed
+        if config.MOCK_AUTH_ENABLED:
+            logger.info("MOCK_AUTH_ENABLED is true. archive_inactive_sandboxes script will not run.")
+            print("Exiting: MOCK_AUTH_ENABLED is true, this script is for live DB maintenance.")
+            return
+
+        # Attempt to initialize DBConnection only if not in mock mode.
+        # This will likely fail now if services.supabase.DBConnection is fully removed
+        # and no alternative is provided. The script needs a significant rewrite
+        # for a non-Supabase DB or should be deprecated.
+        try:
+            # Placeholder for a future DB connection if needed for non-mock mode
+            # For now, this will likely cause an error if DBConnection is truly gone.
+            # To make it "safer" in this refactoring step, we can prevent it from running.
+            print("WARNING: This script's database backend (Supabase) has been removed.")
+            print("It needs to be refactored for a new database or deprecated.")
+            print("To prevent errors, the script will now exit.")
+            logger.warning("archive_inactive_sandboxes: Attempting to run without a valid DB backend. Exiting.")
+            return
+            # db_connection = DBConnection() # This would fail
+        except Exception as e:
+            logger.error(f"Failed to initialize DBConnection (Supabase removed): {e}")
+            print(f"Error: Failed to initialize database connection (Supabase has been removed). Exiting.")
+            return
+
         # Get all account_ids that have an active billing customer
         active_billing_customer_account_ids = await get_active_billing_customer_account_ids()
+        if not active_billing_customer_account_ids and not config.MOCK_AUTH_ENABLED:
+             # If it returned an empty set due to DB connection failure, exit.
+            print("Could not retrieve active billing customers. Exiting.")
+            return
         
         # Get all projects with sandboxes
         all_projects = await get_all_projects()

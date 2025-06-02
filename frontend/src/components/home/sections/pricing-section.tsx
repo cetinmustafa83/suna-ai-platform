@@ -21,9 +21,11 @@ import {
   createCheckoutSession,
   SubscriptionStatus,
   CreateCheckoutSessionResponse,
-} from '@/lib/api';
+} from '@/lib/api'; // createCheckoutSession will be conditional for local mode
 import { toast } from 'sonner';
 import { isLocalMode } from '@/lib/config';
+import { useBilling } from '@/contexts/BillingContext'; // Import useBilling
+import * as LocalAuth from '@/lib/auth'; // To check auth status
 
 // Constants
 const DEFAULT_SELECTED_PLAN = '6 hours';
@@ -71,10 +73,12 @@ interface PricingTierProps {
   isFetchingPlan: boolean;
   selectedPlan?: string;
   onPlanSelect?: (planId: string) => void;
-  onSubscriptionUpdate?: () => void;
-  isAuthenticated?: boolean;
+  onSubscriptionUpdate?: () => void; // This can be used to signal BillingContext to refresh
+  // isAuthenticated?: boolean; // Will get from LocalAuth or context
   returnUrl: string;
   insideDialog?: boolean;
+  // For mock updates
+  updateMockSubscription?: (newPlanData: Partial<SubscriptionStatus & { id?: string, account_id?: string }>) => Promise<void>;
 }
 
 // Components
@@ -205,11 +209,40 @@ function PricingTier({
   };
 
   const handleSubscribe = async (planStripePriceId: string) => {
-    if (!isAuthenticated) {
-      window.location.href = '/auth';
+    const authUser = await LocalAuth.getUser(); // Check auth status for local mode too
+    if (!authUser.data.user) {
+      window.location.href = '/auth'; // Redirect to login if not authenticated
       return;
     }
 
+    if (isLocalMode() && tier.name !== 'Enterprise') { // Enterprise might still link to a contact form
+      if (updateMockSubscription) {
+        const selectedPlanDetails = tier.name === 'Custom' && tier.upgradePlans ?
+                                   tier.upgradePlans.find(p => p.hours === localSelectedPlan) :
+                                   tier;
+        const mockPlanData = {
+          // id: currentSubscription?.id, // Let updateMockSubscription handle ID/accountId logic
+          // account_id: currentSubscription?.account_id,
+          status: 'active',
+          plan_name: selectedPlanDetails?.name || tier.name,
+          price_id: selectedPlanDetails?.stripePriceId || tier.stripePriceId, // Use stripePriceId as a mock plan identifier
+          minutes_limit: parseInt(getDisplayedHours(tier).split(' ')[0]) * (tier.name === 'Custom' ? 1 : 60), // Example: convert hours to minutes or use a fixed value
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() as any,
+          current_usage: 0,
+          cancel_at_period_end: false,
+          has_schedule: false,
+        };
+        console.log("Local Mode: Updating mock subscription with:", mockPlanData);
+        await updateMockSubscription(mockPlanData);
+        toast.success(`Switched to mock ${mockPlanData.plan_name}`);
+        if (onSubscriptionUpdate) onSubscriptionUpdate(); // To refresh context if needed
+      } else {
+        toast.error("Mock subscription update function not available.");
+      }
+      return;
+    }
+
+    // Original Stripe logic for non-local mode or Enterprise tier
     if (isLoading[planStripePriceId]) {
       return;
     }
@@ -616,42 +649,71 @@ export function PricingSection({
   const [deploymentType, setDeploymentType] = useState<'cloud' | 'self-hosted'>(
     'cloud',
   );
-  const [currentSubscription, setCurrentSubscription] =
-    useState<SubscriptionStatus | null>(null);
-  const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
-  const [isFetchingPlan, setIsFetchingPlan] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // const [currentSubscription, setCurrentSubscription] =
+  //   useState<SubscriptionStatus | null>(null); // From BillingContext
+  // const [isLoading, setIsLoading] = useState<Record<string, boolean>>({}); // For individual plan button loading
+  // const [isFetchingPlan, setIsFetchingPlan] = useState(true); // From BillingContext
+  // const [isAuthenticated, setIsAuthenticated] = useState(false); // From LocalAuth
 
-  const fetchCurrentPlan = async () => {
-    setIsFetchingPlan(true);
-    try {
-      const subscriptionData = await getSubscription();
-      console.log('Fetched Subscription Status:', subscriptionData);
-      setCurrentSubscription(subscriptionData);
-      setIsAuthenticated(true);
-    } catch (error) {
-      console.error('Error fetching subscription:', error);
-      setCurrentSubscription(null);
-      setIsAuthenticated(false);
-    } finally {
-      setIsFetchingPlan(false);
-    }
-  };
+  const {
+    currentSubscription,
+    isLoading: isBillingContextLoading,
+    updateMockSubscription: contextUpdateMockSubscription,
+    checkBillingStatus: refreshBillingContextSubscription,
+  } = useBilling();
+
+  const [isLoading, setIsLoading] = useState<Record<string, boolean>>({}); // For individual plan button loading states
+  const [isAuthenticatedUser, setIsAuthenticatedUser] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const auth = await LocalAuth.getUser();
+      setIsAuthenticatedUser(!!auth.data.user);
+    };
+    checkAuth();
+  }, []);
+
+
+  // const fetchCurrentPlan = async () => { // Now handled by BillingContext
+  //   setIsFetchingPlan(true);
+  //   try {
+  //     const subscriptionData = await getSubscription();
+  //     console.log('Fetched Subscription Status:', subscriptionData);
+  //     setCurrentSubscription(subscriptionData);
+  //     setIsAuthenticated(true);
+  //   } catch (error) {
+  //     console.error('Error fetching subscription:', error);
+  //     setCurrentSubscription(null);
+  //     setIsAuthenticated(false);
+  //   } finally {
+  //     setIsFetchingPlan(false);
+  //   }
+  // };
 
   const handlePlanSelect = (planId: string) => {
+    // This function is called when a plan is selected, typically before the subscribe button is clicked.
+    // It's used to set the loading state for the specific plan button.
     setIsLoading((prev) => ({ ...prev, [planId]: true }));
   };
 
   const handleSubscriptionUpdate = () => {
-    fetchCurrentPlan();
+    // This function is called after a subscription action (real or mock)
+    // to refresh the displayed subscription information.
+    if (isLocalMode()) {
+      refreshBillingContextSubscription(true); // Force refresh from RxDB via context
+    } else {
+      // For real subscriptions, you might refetch from backend or rely on TanStack Query cache invalidation
+      // For now, let's assume it also tries to refresh via context, which would hit backend if not local.
+      refreshBillingContextSubscription(true);
+    }
     setTimeout(() => {
-      setIsLoading({});
+      setIsLoading({}); // Reset all button loading states
     }, 1000);
   };
 
-  useEffect(() => {
-    fetchCurrentPlan();
-  }, []);
+  // useEffect(() => { // BillingContext now handles initial load
+  //   fetchCurrentPlan();
+  // }, []);
 
   const handleTabChange = (tab: 'cloud' | 'self-hosted') => {
     if (tab === 'self-hosted') {
@@ -672,14 +734,22 @@ export function PricingSection({
     }
   };
 
-  if (isLocalMode()) {
-    return (
-      <div className="p-4 bg-muted/30 border border-border rounded-lg text-center">
-        <p className="text-sm text-muted-foreground">
-          Running in local development mode - billing features are disabled
-        </p>
-      </div>
-    );
+  // if (isLocalMode()) { // We will now render the tiers in local mode to allow mock plan changes
+  //   return (
+  //     <div className="p-4 bg-muted/30 border border-border rounded-lg text-center">
+  //       <p className="text-sm text-muted-foreground">
+  //         Running in local development mode - Mock billing enabled.
+  //       </p>
+  //     </div>
+  //   );
+  // }
+
+  if (isBillingContextLoading && !isLocalMode()) { // Show loading skeleton only if not local mode and context is loading
+     return (
+        <div className="grid gap-4 w-full max-w-6xl mx-auto px-6 min-[650px]:grid-cols-2 min-[900px]:grid-cols-3">
+            {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-[400px] w-full rounded-xl" />)}
+        </div>
+     )
   }
 
   return (
@@ -723,14 +793,15 @@ export function PricingSection({
             <PricingTier
               key={tier.name}
               tier={tier}
-              currentSubscription={currentSubscription}
-              isLoading={isLoading}
-              isFetchingPlan={isFetchingPlan}
+              currentSubscription={currentSubscription} // from BillingContext
+              isLoading={isLoading} // local button loading state
+              isFetchingPlan={isBillingContextLoading} // from BillingContext
               onPlanSelect={handlePlanSelect}
               onSubscriptionUpdate={handleSubscriptionUpdate}
-              isAuthenticated={isAuthenticated}
+              // isAuthenticated will be checked inside PricingTier using LocalAuth
               returnUrl={returnUrl}
               insideDialog={insideDialog}
+              updateMockSubscription={isLocalMode() ? contextUpdateMockSubscription : undefined}
             />
           ))}
         </div>

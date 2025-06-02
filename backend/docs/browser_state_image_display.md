@@ -11,7 +11,7 @@ The BrowserToolView component has been enhanced to display browser state images 
 The backend browser tool (`sb_browser_tool.py`) already handles image uploads:
 
 1. When a browser action is executed, a screenshot is captured as base64
-2. The screenshot is uploaded to Supabase storage using `upload_base64_image()`
+2. The screenshot is uploaded to the configured S3-compatible object storage using `upload_base64_image()`
 3. The public URL is stored in the `image_url` field
 4. The `screenshot_base64` field is removed to reduce message size
 5. The browser state message is saved with the `image_url` field

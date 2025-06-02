@@ -7,7 +7,7 @@ Die SUNA AI Platform Entwicklungsumgebung ist vollständig eingerichtet und bere
 ### 🐍 Backend Setup
 - ✅ Poetry installiert und konfiguriert
 - ✅ Python Virtual Environment erstellt
-- ✅ Alle Backend-Abhängigkeiten installiert (FastAPI, OpenAI, Supabase, etc.)
+- ✅ Alle Backend-Abhängigkeiten installiert (FastAPI, OpenAI, etc. - Supabase SDK wurde entfernt)
 - ✅ Backend .env Datei erstellt und grundkonfiguriert
 
 ### ⚛️ Frontend Setup  
@@ -42,8 +42,11 @@ brew install redis rabbitmq
 
 ### 2. API Keys konfigurieren
 Bearbeite `backend/.env` und `frontend/.env`:
-- OpenAI/Anthropic API Keys
-- Supabase URLs und Keys (für Datenbank)
+- OpenAI/Anthropic API Keys (essenziell für AI-Funktionen).
+- Für die lokale Entwicklung:
+    - Backend (`backend/.env`): `MOCK_AUTH_ENABLED=true` setzen, um die lokale Mock-Authentifizierung zu nutzen.
+    - Frontend (`frontend/.env`): Verwendet RxDB für lokale Daten; keine speziellen DB-Keys für das Frontend benötigt.
+- Für eine Produktions- oder Staging-Umgebung: Konfiguriere die Umgebungsvariablen für deine gewählte Backend-Datenbank entsprechend.
 
 ### 3. Entwicklung starten
 
@@ -106,10 +109,10 @@ make clean          # Temporäre Dateien bereinigen
 
 ## ⚠️ Wichtige Hinweise
 
-1. **Ohne API Keys** funktioniert nur die UI, nicht die AI-Features
-2. **Ohne Supabase** funktioniert keine Datenpersistierung
-3. **Docker** ist für einfachste Einrichtung empfohlen
-4. **Ports 3000, 8000, 6379, 5672** müssen verfügbar sein
+1. **Ohne API Keys** funktioniert nur die UI, nicht die AI-Features.
+2. **Datenpersistierung**: Im Backend hängt die Datenpersistierung von der gewählten Datenbank-Lösung ab. Im Frontend wird im lokalen Entwicklungsmodus RxDB für die Datenspeicherung im Browser verwendet.
+3. **Docker** ist für die einfachste Einrichtung von externen Services wie Redis/RabbitMQ empfohlen.
+4. **Ports 3000, 8000, 6379, 5672** (oder die von dir konfigurierten Ports) müssen verfügbar sein.
 
 ## 🆘 Bei Problemen
 

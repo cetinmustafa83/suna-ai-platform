@@ -46,9 +46,11 @@ Für erweiterte Features können Sie diese Secrets konfigurieren:
 |-------------|--------------|--------------|
 | `ANTHROPIC_API_KEY` | Anthropic Claude API Key | Optional |
 | `OPENAI_API_KEY` | OpenAI API Key | Optional |
-| `SUPABASE_URL` | Supabase Projekt URL | Optional |
-| `SUPABASE_ANON_KEY` | Supabase Anonymous Key | Optional |
-| `SUPABASE_SERVICE_KEY` | Supabase Service Role Key | Optional |
+# | `SUPABASE_URL` | Supabase Projekt URL | Veraltet | (Datenbank-Secrets hängen von der gewählten Backend-DB ab)
+# | `SUPABASE_ANON_KEY` | Supabase Anonymous Key | Veraltet |
+# | `SUPABASE_SERVICE_KEY` | Supabase Service Role Key | Veraltet |
+| `YOUR_DATABASE_URL` | Connection string for your chosen backend database (Beispiel) | Optional |
+| `MOCK_AUTH_ENABLED` | Auf "true" setzen, falls CI im Mock-Auth-Modus laufen soll | Optional |
 
 **Hinweis**: `GITHUB_TOKEN` wird automatisch von GitHub bereitgestellt.
 

@@ -21,7 +21,8 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+// import { createClient } from '@/lib/supabase/client'; // Supabase client removed
+import * as LocalAuth from '@/lib/auth'; // Import local auth functions
 import {
   Tooltip,
   TooltipContent,
@@ -52,17 +53,21 @@ export function SidebarLeft({
   // Fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getUser();
+      // const supabase = createClient(); // Supabase client removed
+      const { data } = await LocalAuth.getUser(); // Use local auth
 
       if (data.user) {
         setUser({
-          name:
-            data.user.user_metadata?.name ||
-            data.user.email?.split('@')[0] ||
-            'User',
+          name: data.user.name || data.user.email?.split('@')[0] || 'User',
           email: data.user.email || '',
-          avatar: data.user.user_metadata?.avatar_url || '',
+          avatar: '', // Mock avatar, or extend MockUser to include it
+        });
+      } else {
+        // Handle case where mock user is not logged in
+        setUser({
+          name: 'Guest',
+          email: '',
+          avatar: '',
         });
       }
     };

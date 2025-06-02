@@ -297,15 +297,38 @@ async def create_checkout_session(
     current_user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Create a Stripe Checkout session or modify an existing subscription."""
+    if config.MOCK_AUTH_ENABLED:
+        logger.info(f"Mock auth: create_checkout_session called for user {current_user_id}, price {request.price_id}")
+        # Simulate a successful checkout creation or plan change without Stripe
+        # This needs to align with what the frontend expects from CreateCheckoutSessionResponse
+        return {
+            "session_id": f"mock_cs_session_{uuid.uuid4()}",
+            "url": request.success_url, # Redirect to success URL as if payment was done
+            "status": "updated", # Simulate an update or new checkout
+            "message": "Successfully switched to mock plan.",
+            "details": {
+                "is_upgrade": True, # Can be dynamic based on mock logic if needed
+                "effective_date": "immediate",
+                "current_price": 0, # Mock previous price
+                "new_price": 20, # Mock new price, or derive from mock plan
+            }
+        }
     try:
         # Get Supabase client
         db = DBConnection()
         client = await db.client
         
-        # Get user email from auth.users
-        user_result = await client.auth.admin.get_user_by_id(current_user_id)
-        if not user_result: raise HTTPException(status_code=404, detail="User not found")
-        email = user_result.user.email
+        email = ""
+        if config.MOCK_AUTH_ENABLED and current_user_id == config.MOCK_USER_ID:
+            email = "mock.user@example.com"
+            logger.info(f"Mock auth enabled, using mock email {email} for user {current_user_id}")
+        else:
+            # Get user email from auth.users
+            user_result = await client.auth.admin.get_user_by_id(current_user_id)
+            if not user_result or not user_result.user: # Added check for user_result.user
+                logger.error(f"User not found for ID: {current_user_id}")
+                raise HTTPException(status_code=404, detail="User not found")
+            email = user_result.user.email
         
         # Get or create Stripe customer
         customer_id = await get_stripe_customer_id(client, current_user_id)
@@ -581,6 +604,9 @@ async def create_portal_session(
     current_user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Create a Stripe Customer Portal session for subscription management."""
+    if config.MOCK_AUTH_ENABLED:
+        logger.info(f"Mock auth: create_portal_session called for user {current_user_id}")
+        return {"url": "/mock-portal-url-for-user/" + current_user_id} # Simple mock URL
     try:
         # Get Supabase client
         db = DBConnection()
@@ -681,6 +707,24 @@ async def get_subscription(
     current_user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Get the current subscription status for the current user, including scheduled changes."""
+    if config.MOCK_AUTH_ENABLED:
+        logger.info(f"Mock auth: get_subscription called for user {current_user_id}")
+        # Return a default mock subscription status, aligning with SubscriptionStatus Pydantic model
+        # This should ideally come from some mock data store eventually, or be consistent with frontend's default mock
+        return {
+            "status": "active",
+            "plan_name": "Mock Free Plan",
+            "price_id": "mock_free_tier_backend",
+            "current_period_end": datetime.now(timezone.utc).isoformat(),
+            "cancel_at_period_end": False,
+            "trial_end": None,
+            "minutes_limit": 100,
+            "current_usage": 10.5,
+            "has_schedule": False,
+            "scheduled_plan_name": None,
+            "scheduled_price_id": None,
+            "scheduled_change_date": None,
+        }
     try:
         # Get subscription from Stripe (this helper already handles filtering/cleanup)
         subscription = await get_user_subscription(current_user_id)
@@ -764,6 +808,29 @@ async def check_status(
     current_user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Check if the user can run agents based on their subscription and usage."""
+    if config.MOCK_AUTH_ENABLED:
+        logger.info(f"Mock auth: check_status called for user {current_user_id}")
+        if current_user_id == config.MOCK_USER_ID: # Check if it's the designated admin mock user
+            logger.info(f"Mock auth: Admin user ({current_user_id}) detected for check_status. Granting full access.")
+            return {
+                "can_run": True,
+                "message": "Admin access: Usage limits bypassed.",
+                "subscription": {
+                    "price_id": "admin_mock_plan",
+                    "plan_name": "Admin Unlimited (Mock)",
+                    "minutes_limit": 999999
+                }
+            }
+        else: # For other mock users, if any, or a default mock behavior
+            return {
+                "can_run": True, # Or false, depending on desired default mock behavior
+                "message": "Mock status: Standard mock user.",
+                "subscription": {
+                    "price_id": "mock_standard_tier_backend",
+                    "plan_name": "Mock Standard Plan",
+                    "minutes_limit": 200
+                }
+            }
     try:
         # Get Supabase client
         db = DBConnection()
@@ -867,16 +934,46 @@ async def get_available_models(
     current_user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Get the list of models available to the user based on their subscription tier."""
+    # If mock auth is enabled AND the user is the designated mock user, grant all models.
+    # utils.config.MOCK_USER_ID should be the same as what auth_utils.py returns for mock user.
+    if config.MOCK_AUTH_ENABLED and current_user_id == config.MOCK_USER_ID:
+        logger.info(f"Mock auth: Admin user ({current_user_id}) detected for get_available_models. Returning all models.")
+        all_mock_models = []
+        for short_name, full_name in MODEL_NAME_ALIASES.items():
+            all_mock_models.append({
+                "id": full_name,
+                "display_name": short_name, # Or a more descriptive mock name
+                "short_name": short_name,
+                "requires_subscription": False, # Admin has access to all
+                "is_available": True
+            })
+        return {
+            "models": all_mock_models,
+            "subscription_tier": "Admin Mock Tier (All Access)",
+            "total_models": len(all_mock_models)
+        }
+    elif config.MOCK_AUTH_ENABLED: # Non-admin mock user
+        logger.info(f"Mock auth: Non-admin mock user {current_user_id} for get_available_models. Returning standard mock models.")
+        # Standard mock list for non-admin mock users
+        mock_models = [
+            {"id": "mock-gpt-3.5-turbo", "display_name": "Mock GPT-3.5 Turbo", "short_name": "Mock GPT-3.5", "requires_subscription": False, "is_available": True},
+            {"id": "mock-claude-sonnet", "display_name": "Mock Claude Sonnet", "short_name": "Mock Claude Sonnet", "requires_subscription": False, "is_available": True},
+        ]
+        return {
+            "models": mock_models,
+            "subscription_tier": "Mock Standard Tier",
+            "total_models": len(mock_models)
+        }
+
     try:
         # Get Supabase client
         db = DBConnection()
         client = await db.client
         
-        # Check if we're in local development mode
-        if config.ENV_MODE == EnvMode.LOCAL:
-            logger.info("Running in local development mode - billing checks are disabled")
+        # Check if we're in local development mode (original logic if MOCK_AUTH_ENABLED is false)
+        if config.ENV_MODE == EnvMode.LOCAL: # This condition might be redundant if MOCK_AUTH_ENABLED implies local
+            logger.info("Running in local development mode - billing checks are disabled (MOCK_AUTH_ENABLED is false but ENV_MODE is LOCAL)")
             
-            # In local mode, return all models from MODEL_NAME_ALIASES
             model_info = []
             for short_name, full_name in MODEL_NAME_ALIASES.items():
                 # Skip entries where the key is a full name to avoid duplicates

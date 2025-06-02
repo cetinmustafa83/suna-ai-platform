@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+
+# =====================================================================================
+# IMPORTANT NOTE: This script is currently outdated.
+# The Suna AI Platform has removed Supabase as a direct dependency for local
+# development, opting for a local mock authentication system and RxDB for frontend data.
+# This script requires a complete rewrite to reflect the new setup procedures,
+# which will involve configuring a chosen backend database and other services manually
+# or via a new setup mechanism if self-hosting. For local development, refer to
+# DEVELOPMENT_SETUP.md.
+# =====================================================================================
+
 import os
 import sys
 import time

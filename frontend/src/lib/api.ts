@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/client';
+// import { createClient } from '@/lib/supabase/client'; // Supabase client removed
+import * as LocalAuth from '@/lib/auth'; // Import local auth functions
 import { handleApiError } from './error-handler';
 
 // Get backend URL from environment variables
@@ -98,128 +99,104 @@ export interface FileInfo {
   permissions?: string;
 }
 
+import { getDatabase } from '@/lib/rxdb/database'; // Import RxDB database
+// import { projectSchema } from '@/lib/rxdb/schemas'; // Assuming project schema is defined
+
 // Project APIs
 export const getProjects = async (): Promise<Project[]> => {
   try {
-    const supabase = createClient();
-
-    // Get the current user's ID to filter projects
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await LocalAuth.getUser();
     if (userError) {
-      console.error('Error getting current user:', userError);
+      console.error('Error getting current user (mock):', userError);
       return [];
     }
-
-    // If no user is logged in, return an empty array
     if (!userData.user) {
-      console.log('[API] No user logged in, returning empty projects array');
+      console.log('[API] No user logged in (mock), returning empty projects array');
       return [];
     }
 
-    // Query only projects where account_id matches the current user's ID
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('account_id', userData.user.id);
+    // TODO: Use a proper mock account ID or derive from user when multi-account is implemented
+    const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`;
 
-    if (error) {
-      // Handle permission errors specifically
-      if (
-        error.code === '42501' &&
-        error.message.includes('has_role_on_account')
-      ) {
-        console.error(
-          'Permission error: User does not have proper account access',
-        );
-        return []; // Return empty array instead of throwing
-      }
-      throw error;
+    console.log(`[RxDB] Fetching projects for account_id: ${MOCK_ACCOUNT_ID}`);
+    const db = await getDatabase();
+    if (!db.projects) {
+      console.warn("[RxDB] projects collection not found. Ensure it's added to the database.");
+      // await db.addCollections({ projects: { schema: projectSchema } }); // Example: Add if missing, ensure schema is imported
+      return [];
     }
 
-    console.log('[API] Raw projects from DB:', data?.length, data);
+    const projectsQuery = db.projects.find({
+      selector: {
+        // account_id: MOCK_ACCOUNT_ID // Filter by account_id once field is in schema and data
+      }
+    });
+    const projectsDocs = await projectsQuery.exec();
 
-    // Map database fields to our Project type
-    const mappedProjects: Project[] = (data || []).map((project) => ({
-      id: project.project_id,
-      name: project.name || '',
-      description: project.description || '',
-      account_id: project.account_id,
-      created_at: project.created_at,
-      updated_at: project.updated_at,
-      sandbox: project.sandbox || {
-        id: '',
-        pass: '',
-        vnc_preview: '',
-        sandbox_url: '',
-      },
-    }));
+    console.log('[RxDB] Raw projects from DB:', projectsDocs.length, projectsDocs);
 
-    console.log('[API] Mapped projects for frontend:', mappedProjects.length);
+    const mappedProjects: Project[] = projectsDocs.map(doc => {
+      const plainDoc = doc.toJSON(); // Get plain JSON object from RxDocument
+      return {
+        id: plainDoc.id, // Assuming RxDB primaryKey is 'id' and maps to project_id
+        name: plainDoc.name || '',
+        description: plainDoc.description || '',
+        account_id: plainDoc.account_id || MOCK_ACCOUNT_ID, // Ensure this field exists in your RxDB schema
+        created_at: plainDoc.created_at || new Date().toISOString(),
+        updated_at: plainDoc.updated_at || new Date().toISOString(),
+        sandbox: plainDoc.sandbox || {
+          id: '',
+          pass: '',
+          vnc_preview: '',
+          sandbox_url: '',
+        },
+        is_public: plainDoc.is_public || false,
+      };
+    });
 
+    console.log('[RxDB] Mapped projects for frontend:', mappedProjects.length);
     return mappedProjects;
+
   } catch (err) {
-    console.error('Error fetching projects:', err);
+    console.error('Error fetching projects from RxDB:', err);
     handleApiError(err, { operation: 'load projects', resource: 'projects' });
-    // Return empty array for permission errors to avoid crashing the UI
     return [];
   }
 };
 
-export const getProject = async (projectId: string): Promise<Project> => {
-  const supabase = createClient();
-
+export const getProject = async (projectId: string): Promise<Project | null> => { // Return type changed to Project | null
   try {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('project_id', projectId)
-      .single();
+    console.log(`[RxDB] Fetching project by id: ${projectId}`);
+    const db = await getDatabase();
+    if (!db.projects) {
+      console.warn(`[RxDB] projects collection not found for getProject(${projectId}).`);
+      return null;
+    }
+    const projectDoc = await db.projects.findOne(projectId).exec();
 
-    if (error) {
-      // Handle the specific "no rows returned" error from Supabase
-      if (error.code === 'PGRST116') {
-        throw new Error(`Project not found or not accessible: ${projectId}`);
-      }
-      throw error;
+    if (!projectDoc) {
+      handleApiError(new Error(`Project ${projectId} not found in RxDB`), { operation: 'load project', resource: `project ${projectId}` });
+      return null;
     }
 
-    console.log('Raw project data from database:', data);
+    const plainDoc = projectDoc.toJSON();
+    const MOCK_ACCOUNT_ID = `mock-account-for-${(await LocalAuth.getUser()).data.user?.id || 'unknown_user'}`;
 
-    // If project has a sandbox, ensure it's started
-    if (data.sandbox?.id) {
-      // Fire off sandbox activation without blocking
+    // If project has a sandbox, ensure it's started (keeping this logic for now)
+    if (plainDoc.sandbox?.id) {
       const ensureSandboxActive = async () => {
         try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-
-          // For public projects, we don't need authentication
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-          };
-
-          if (session?.access_token) {
-            headers['Authorization'] = `Bearer ${session.access_token}`;
+          const { data: authData } = await LocalAuth.getUser();
+          const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null;
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (mockSession?.access_token) {
+            headers['Authorization'] = `Bearer ${mockSession.access_token}`;
           }
-
           console.log(`Ensuring sandbox is active for project ${projectId}...`);
-          const response = await fetch(
-            `${API_URL}/project/${projectId}/sandbox/ensure-active`,
-            {
-              method: 'POST',
-              headers,
-            },
-          );
-
+          const response = await fetch(`${API_URL}/project/${projectId}/sandbox/ensure-active`, { method: 'POST', headers });
           if (!response.ok) {
-            const errorText = await response
-              .text()
-              .catch(() => 'No error details available');
-            console.warn(
-              `Failed to ensure sandbox is active: ${response.status} ${response.statusText}`,
-              errorText,
-            );
+            const errorText = await response.text().catch(() => 'No error details available');
+            console.warn(`Failed to ensure sandbox is active: ${response.status} ${response.statusText}`, errorText);
           } else {
             console.log('Sandbox activation successful');
           }
@@ -227,300 +204,364 @@ export const getProject = async (projectId: string): Promise<Project> => {
           console.warn('Failed to ensure sandbox is active:', sandboxError);
         }
       };
-
-      // Start the sandbox activation without awaiting
       ensureSandboxActive();
     }
 
-    // Map database fields to our Project type
-    const mappedProject: Project = {
-      id: data.project_id,
-      name: data.name || '',
-      description: data.description || '',
-      account_id: data.account_id,
-      is_public: data.is_public || false,
-      created_at: data.created_at,
-      sandbox: data.sandbox || {
-        id: '',
-        pass: '',
-        vnc_preview: '',
-        sandbox_url: '',
-      },
+    return {
+      id: plainDoc.id,
+      name: plainDoc.name || '',
+      description: plainDoc.description || '',
+      account_id: plainDoc.account_id || MOCK_ACCOUNT_ID,
+      is_public: plainDoc.is_public || false,
+      created_at: plainDoc.created_at || new Date().toISOString(),
+      updated_at: plainDoc.updated_at || new Date().toISOString(),
+      sandbox: plainDoc.sandbox || { id: '', pass: '', vnc_preview: '', sandbox_url: '' },
     };
-
-    // console.log('Mapped project data for frontend:', mappedProject);
-
-    return mappedProject;
-  } catch (error) {
-    console.error(`Error fetching project ${projectId}:`, error);
-    handleApiError(error, { operation: 'load project', resource: `project ${projectId}` });
-    throw error;
+  } catch (err) {
+    console.error(`Error fetching project ${projectId} from RxDB:`, err);
+    handleApiError(err, { operation: 'load project', resource: `project ${projectId}` });
+    return null; // Return null on error
   }
 };
+
+import { v4 as uuidv4 } from 'uuid'; // For generating IDs
 
 export const createProject = async (
   projectData: { name: string; description: string },
   accountId?: string,
 ): Promise<Project> => {
-  const supabase = createClient();
+  try {
+    if (!accountId) {
+      const { data: userData, error: userError } = await LocalAuth.getUser();
+      if (userError || !userData.user) {
+        throw new Error('User not authenticated for createProject (mock)');
+      }
+      accountId = `mock-account-for-${userData.user.id}`; // Use mock account ID logic
+    }
 
-  // If accountId is not provided, we'll need to get the user's ID
-  if (!accountId) {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    console.log(`[RxDB] Creating project for account_id: ${accountId}`);
+    const db = await getDatabase();
+    if (!db.projects) {
+      console.warn("[RxDB] projects collection not found for createProject.");
+      throw new Error("Projects collection not available");
+    }
 
-    if (userError) throw userError;
-    if (!userData.user)
-      throw new Error('You must be logged in to create a project');
-
-    // In Basejump, the personal account ID is the same as the user ID
-    accountId = userData.user.id;
-  }
-
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({
+    const newProjectId = uuidv4();
+    const newProjectData = {
+      id: newProjectId, // RxDB uses 'id' as primary key by default in schemas
       name: projectData.name,
-      description: projectData.description || null,
+      description: projectData.description || '',
       account_id: accountId,
-    })
-    .select()
-    .single();
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_public: false,
+      sandbox: { id: '', pass: '', vnc_preview: '', sandbox_url: '' },
+    };
 
-  if (error) {
-    handleApiError(error, { operation: 'create project', resource: 'project' });
-    throw error;
+    const newDoc = await db.projects.insert(newProjectData);
+    console.log('[RxDB] Project created:', newDoc.toJSON());
+
+    // Return data conforming to Project type, mapping 'id' from RxDB to 'id' in Project
+    return { ...newDoc.toJSON(), id: newDoc.id } as Project;
+
+  } catch (err) {
+    console.error('Error creating project in RxDB:', err);
+    handleApiError(err, { operation: 'create project', resource: 'project' });
+    throw err; // Re-throw after handling to allow TanStack Query to catch it
   }
-
-  const project = {
-    id: data.project_id,
-    name: data.name,
-    description: data.description || '',
-    account_id: data.account_id,
-    created_at: data.created_at,
-    sandbox: { id: '', pass: '', vnc_preview: '' },
-  };
-  return project;
 };
 
 export const updateProject = async (
   projectId: string,
-  data: Partial<Project>,
+  updateData: Partial<Project>, // Changed 'data' to 'updateData' to avoid conflict
 ): Promise<Project> => {
-  const supabase = createClient();
+  try {
+    console.log(`[RxDB] Updating project with ID: ${projectId}`);
+    const db = await getDatabase();
+    if (!db.projects) {
+      console.warn("[RxDB] projects collection not found for updateProject.");
+      throw new Error("Projects collection not available");
+    }
 
-  console.log('Updating project with ID:', projectId);
-  console.log('Update data:', data);
+    const projectDoc = await db.projects.findOne(projectId).exec();
+    if (!projectDoc) {
+      throw new Error(`Project with ID ${projectId} not found in RxDB.`);
+    }
 
-  // Sanity check to avoid update errors
-  if (!projectId || projectId === '') {
-    console.error('Attempted to update project with invalid ID:', projectId);
-    throw new Error('Cannot update project: Invalid project ID');
-  }
+    // Apply updates, ensuring not to overwrite 'id' or 'account_id' if they are not meant to be changed
+    const dataToSet = { ...updateData, updated_at: new Date().toISOString() };
+    delete dataToSet.id; // Primary key should not be changed with set
+    delete dataToSet.account_id; // Usually account_id should not be changed
 
-  const { data: updatedData, error } = await supabase
-    .from('projects')
-    .update(data)
-    .eq('project_id', projectId)
-    .select()
-    .single();
+    await projectDoc.patch(dataToSet); // Use patch for partial updates
 
-  if (error) {
-    console.error('Error updating project:', error);
-    handleApiError(error, { operation: 'update project', resource: `project ${projectId}` });
-    throw error;
-  }
+    console.log('[RxDB] Project updated:', projectDoc.toJSON());
 
-  if (!updatedData) {
-    const noDataError = new Error('No data returned from update');
-    handleApiError(noDataError, { operation: 'update project', resource: `project ${projectId}` });
-    throw noDataError;
-  }
-
-  // Dispatch a custom event to notify components about the project change
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(
-      new CustomEvent('project-updated', {
-        detail: {
-          projectId,
-          updatedData: {
-            id: updatedData.project_id,
-            name: updatedData.name,
-            description: updatedData.description,
+    // Dispatch custom event if still needed (consider if RxDB's reactivity handles this)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('project-updated', {
+          detail: {
+            projectId,
+            updatedData: projectDoc.toJSON(), // Send the full updated document
           },
-        },
-      }),
-    );
+        }),
+      );
+    }
+    return { ...projectDoc.toJSON(), id: projectDoc.id } as Project;
+  } catch (err) {
+    console.error(`Error updating project ${projectId} in RxDB:`, err);
+    handleApiError(err, { operation: 'update project', resource: `project ${projectId}` });
+    throw err;
   }
-
-  // Return formatted project data - use same mapping as getProject
-  const project = {
-    id: updatedData.project_id,
-    name: updatedData.name,
-    description: updatedData.description || '',
-    account_id: updatedData.account_id,
-    created_at: updatedData.created_at,
-    sandbox: updatedData.sandbox || {
-      id: '',
-      pass: '',
-      vnc_preview: '',
-      sandbox_url: '',
-    },
-  };
-  return project;
 };
 
 export const deleteProject = async (projectId: string): Promise<void> => {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from('projects')
-    .delete()
-    .eq('project_id', projectId);
-
-  if (error) {
-    handleApiError(error, { operation: 'delete project', resource: `project ${projectId}` });
-    throw error;
+  try {
+    console.log(`[RxDB] Deleting project with ID: ${projectId}`);
+    const db = await getDatabase();
+    if (!db.projects) {
+      console.warn("[RxDB] projects collection not found for deleteProject.");
+      throw new Error("Projects collection not available");
+    }
+    const projectDoc = await db.projects.findOne(projectId).exec();
+    if (!projectDoc) {
+      console.warn(`Project with ID ${projectId} not found for deletion.`);
+      // Depending on desired behavior, either throw or return successfully
+      return;
+    }
+    await projectDoc.remove();
+    console.log(`[RxDB] Project ${projectId} deleted.`);
+  } catch (err) {
+    console.error(`Error deleting project ${projectId} from RxDB:`, err);
+    handleApiError(err, { operation: 'delete project', resource: `project ${projectId}` });
+    throw err;
   }
 };
 
 // Thread APIs
 export const getThreads = async (projectId?: string): Promise<Thread[]> => {
-  const supabase = createClient();
+  try {
+    const { data: userData, error: userError } = await LocalAuth.getUser();
+    if (userError) {
+      console.error('Error getting current user (mock):', userError);
+      return [];
+    }
+    if (!userData.user) {
+      console.log('[API] No user logged in (mock), returning empty threads array');
+      return [];
+    }
+    const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`;
 
-  // Get the current user's ID to filter threads
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError) {
-    console.error('Error getting current user:', userError);
+    console.log(`[RxDB] Fetching threads for account_id: ${MOCK_ACCOUNT_ID}` + (projectId ? ` and project_id: ${projectId}` : ""));
+    const db = await getDatabase();
+    if (!db.threads) {
+      console.warn("[RxDB] threads collection not found. Ensure it's added.");
+      return [];
+    }
+
+    const selector: any = {
+      // account_id: MOCK_ACCOUNT_ID, // Once account_id is in schema
+    };
+    if (projectId) {
+      selector.project_id = projectId;
+    }
+
+    const threadsQuery = db.threads.find({ selector });
+    const threadsDocs = await threadsQuery.exec();
+
+    console.log('[RxDB] Raw threads from DB:', threadsDocs.length, threadsDocs);
+
+    const mappedThreads: Thread[] = threadsDocs
+      .map(doc => {
+        const plainDoc = doc.toJSON();
+        return {
+          thread_id: plainDoc.id, // Assuming RxDB primaryKey 'id' maps to thread_id
+          account_id: plainDoc.account_id || MOCK_ACCOUNT_ID,
+          project_id: plainDoc.project_id,
+          is_public: plainDoc.is_public || false,
+          created_at: plainDoc.created_at || new Date().toISOString(),
+          updated_at: plainDoc.updated_at || new Date().toISOString(),
+          // metadata: plainDoc.metadata // if you add metadata to RxDB schema
+        };
+      })
+      .filter((thread) => {
+        // const metadata = thread.metadata || {}; // Re-enable if metadata is used
+        // return !metadata.is_agent_builder;
+        return true; // Temporarily allow all threads if metadata not in RxDB yet
+      });
+
+    return mappedThreads;
+  } catch (err) {
+    console.error('Error fetching threads from RxDB:', err);
+    handleApiError(err, { operation: 'load threads', resource: projectId ? `threads for project ${projectId}` : 'threads' });
     return [];
   }
-
-  // If no user is logged in, return an empty array
-  if (!userData.user) {
-    console.log('[API] No user logged in, returning empty threads array');
-    return [];
-  }
-
-  let query = supabase.from('threads').select('*');
-
-  // Always filter by the current user's account ID
-  query = query.eq('account_id', userData.user.id);
-
-  if (projectId) {
-    console.log('[API] Filtering threads by project_id:', projectId);
-    query = query.eq('project_id', projectId);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    handleApiError(error, { operation: 'load threads', resource: projectId ? `threads for project ${projectId}` : 'threads' });
-    throw error;
-  }
-
-  const mappedThreads: Thread[] = (data || [])
-    .filter((thread) => {
-      const metadata = thread.metadata || {};
-      return !metadata.is_agent_builder;
-    })
-    .map((thread) => ({
-      thread_id: thread.thread_id,
-      account_id: thread.account_id,
-      project_id: thread.project_id,
-      created_at: thread.created_at,
-      updated_at: thread.updated_at,
-    }));
-  return mappedThreads;
 };
 
-export const getThread = async (threadId: string): Promise<Thread> => {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from('threads')
-    .select('*')
-    .eq('thread_id', threadId)
-    .single();
+export const getThread = async (threadId: string): Promise<Thread | null> => { // Return type changed to Thread | null
+  try {
+    console.log(`[RxDB] Fetching thread by id: ${threadId}`);
+    const db = await getDatabase();
+    if (!db.threads) {
+      console.warn(`[RxDB] threads collection not found for getThread(${threadId}).`);
+      return null;
+    }
+    const threadDoc = await db.threads.findOne(threadId).exec();
 
-  if (error) {
-    handleApiError(error, { operation: 'load thread', resource: `thread ${threadId}` });
-    throw error;
+    if (!threadDoc) {
+      handleApiError(new Error('Thread not found in RxDB'), { operation: 'load thread', resource: `thread ${threadId}` });
+      return null;
+    }
+    const plainDoc = threadDoc.toJSON();
+    return {
+      thread_id: plainDoc.id,
+      account_id: plainDoc.account_id || `mock-account-for-${(await LocalAuth.getUser()).data.user?.id}`,
+      project_id: plainDoc.project_id,
+      is_public: plainDoc.is_public || false,
+      created_at: plainDoc.created_at || new Date().toISOString(),
+      updated_at: plainDoc.updated_at || new Date().toISOString(),
+    };
+  } catch (err) {
+    console.error(`Error fetching thread ${threadId} from RxDB:`, err);
+    handleApiError(err, { operation: 'load thread', resource: `thread ${threadId}` });
+    return null; // Return null on error
   }
-
-  return data;
 };
 
 export const createThread = async (projectId: string): Promise<Thread> => {
-  const supabase = createClient();
+  try {
+    const { data: userData, error: userError } = await LocalAuth.getUser();
+    if (userError || !userData.user) {
+      throw new Error('User not authenticated for createThread (mock)');
+    }
+    const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`;
 
-  // If user is not logged in, redirect to login
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    throw new Error('You must be logged in to create a thread');
-  }
+    console.log(`[RxDB] Creating thread for project_id: ${projectId} and account_id: ${MOCK_ACCOUNT_ID}`);
+    const db = await getDatabase();
+    if (!db.threads) {
+      console.warn("[RxDB] threads collection not found for createThread.");
+      throw new Error("Threads collection not available");
+    }
 
-  const { data, error } = await supabase
-    .from('threads')
-    .insert({
+    const newThreadId = uuidv4();
+    const newThreadData = {
+      id: newThreadId, // RxDB uses 'id'
       project_id: projectId,
-      account_id: user.id, // Use the current user's ID as the account ID
-    })
-    .select()
-    .single();
+      account_id: MOCK_ACCOUNT_ID,
+      created_by: userData.user.id, // Store creator
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_public: false,
+      // metadata: {} // Add if needed
+    };
 
-  if (error) {
-    handleApiError(error, { operation: 'create thread', resource: 'thread' });
-    throw error;
+    const newDoc = await db.threads.insert(newThreadData);
+    console.log('[RxDB] Thread created:', newDoc.toJSON());
+
+    return { ...newDoc.toJSON(), thread_id: newDoc.id } as Thread; // Map 'id' to 'thread_id'
+
+  } catch (err) {
+    console.error('Error creating thread in RxDB:', err);
+    handleApiError(err, { operation: 'create thread', resource: 'thread' });
+    throw err;
   }
-  return data;
 };
 
 export const addUserMessage = async (
   threadId: string,
   content: string,
-): Promise<void> => {
-  const supabase = createClient();
+  // attachments?: Attachment[], // If attachments are needed, ensure they are handled
+): Promise<Message> => { // Changed to return Promise<Message>
+  try {
+    const { data: userData, error: userError } = await LocalAuth.getUser();
+    if (userError || !userData.user) {
+      throw new Error('User not authenticated for addUserMessage (mock)');
+    }
+    const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`;
 
-  // Format the message in the format the LLM expects - keep it simple with only required fields
-  const message = {
-    role: 'user',
-    content: content,
-  };
+    console.log(`[RxDB] Adding user message to thread_id: ${threadId}`);
+    const db = await getDatabase();
+    if (!db.messages) {
+      console.warn("[RxDB] messages collection not found for addUserMessage.");
+      throw new Error("Messages collection not available");
+    }
 
-  // Insert the message into the messages table
-  const { error } = await supabase.from('messages').insert({
-    thread_id: threadId,
-    type: 'user',
-    is_llm_message: true,
-    content: JSON.stringify(message),
-  });
+    const newMessageId = uuidv4();
+    const newMessageData = {
+      id: newMessageId, // RxDB uses 'id'
+      thread_id: threadId,
+      role: 'user',
+      content: content, // Store content directly, not stringified JSON unless schema expects it
+      type: 'user', // Explicitly set type
+      user_account_id: MOCK_ACCOUNT_ID,
+      created_by: userData.user.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      // attachments: attachments || [], // If handling attachments
+      // metadata: {}, // Add if needed
+      // is_llm_message: true, // This seems specific, decide if needed for RxDB
+    };
 
-  if (error) {
-    console.error('Error adding user message:', error);
-    handleApiError(error, { operation: 'add message', resource: 'message' });
-    throw new Error(`Error adding message: ${error.message}`);
+    const newDoc = await db.messages.insert(newMessageData);
+    console.log('[RxDB] User message added:', newDoc.toJSON());
+
+    // Map to Message type, ensure all fields align with your Message type definition
+    return {
+      // id: newDoc.id, // if Message type has id
+      role: newDoc.role,
+      content: newDoc.content,
+      type: newDoc.type,
+      // ... other fields
+    } as Message;
+
+  } catch (err) {
+    console.error('Error adding user message in RxDB:', err);
+    handleApiError(err, { operation: 'add message', resource: 'message' });
+    throw err;
   }
 };
 
 export const getMessages = async (threadId: string): Promise<Message[]> => {
-  const supabase = createClient();
+ try {
+    console.log(`[RxDB] Fetching messages for thread_id: ${threadId}`);
+    const db = await getDatabase();
+    if (!db.messages) { // Assuming 'messages' is the collection name
+      console.warn("[RxDB] messages collection not found. Ensure it's added.");
+      return [];
+    }
 
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('thread_id', threadId)
-    .neq('type', 'cost')
-    .neq('type', 'summary')
-    .order('created_at', { ascending: true });
+    const messagesQuery = db.messages.find({
+      selector: {
+        thread_id: threadId,
+        // type: { $nin: ['cost', 'summary'] } // TODO: Add type field to schema and data for this filter
+      },
+      sort: [{ created_at: 'asc' }]
+    });
+    const messagesDocs = await messagesQuery.exec();
 
-  if (error) {
-    console.error('Error fetching messages:', error);
-    handleApiError(error, { operation: 'load messages', resource: `messages for thread ${threadId}` });
-    throw new Error(`Error getting messages: ${error.message}`);
+    console.log('[RxDB] Raw messages from DB:', messagesDocs.length, messagesDocs);
+
+    const mappedMessages: Message[] = messagesDocs.map(doc => {
+      const plainDoc = doc.toJSON();
+      // Assuming message content is stored directly, not as stringified JSON
+      // If content IS stringified JSON, you'll need to parse it here.
+      return {
+        // id: plainDoc.id, // If your Message type has an id
+        role: plainDoc.role,
+        content: plainDoc.content, // Assumes content is not stringified JSON
+        type: plainDoc.type || 'user', // Ensure type field exists
+        // ... other fields like created_at, attachments, metadata
+      } as Message; // Cast as Message, ensure all required fields are present
+    });
+
+    return mappedMessages.filter(msg => msg.type !== 'cost' && msg.type !== 'summary'); // Post-filter if not in query
+
+  } catch (err) {
+    console.error('Error fetching messages from RxDB:', err);
+    handleApiError(err, { operation: 'load messages', resource: `messages for thread ${threadId}` });
+    return [];
   }
-
-  console.log('[API] Messages fetched:', data);
-
-  return data || [];
 };
 
 // Agent APIs
@@ -535,13 +576,13 @@ export const startAgent = async (
   },
 ): Promise<{ agent_run_id: string }> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session for backend call
+    // TODO: Review if backend /agent/start needs auth in local mode & how to handle mock token
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     // Check if backend URL is configured
@@ -581,7 +622,7 @@ export const startAgent = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
       body: JSON.stringify(body),
     });
@@ -667,13 +708,13 @@ export const stopAgent = async (agentRunId: string): Promise<void> => {
     activeStreams.delete(agentRunId);
   }
 
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // const supabase = createClient(); // Supabase client removed
+  const { data: authData } = await LocalAuth.getUser(); // Use local auth
+  const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+  // TODO: Review if backend /agent-run/.../stop needs auth in local mode
 
-  if (!session?.access_token) {
-    const authError = new Error('No access token available');
+  if (!mockSession?.access_token) {
+    const authError = new Error('No access token available (mock)');
     handleApiError(authError, { operation: 'stop agent', resource: 'AI assistant' });
     throw authError;
   }
@@ -682,7 +723,7 @@ export const stopAgent = async (agentRunId: string): Promise<void> => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
+      Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
     },
     // Add cache: 'no-store' to prevent caching
     cache: 'no-store',
@@ -707,14 +748,14 @@ export const getAgentStatus = async (agentRunId: string): Promise<AgentRun> => {
   }
 
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+     // TODO: Review if backend /agent-run/... needs auth in local mode
 
-    if (!session?.access_token) {
-      console.error('[API] No access token available for getAgentStatus');
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      console.error('[API] No access token available for getAgentStatus (mock)');
+      throw new Error('No access token available (mock)');
     }
 
     const url = `${API_URL}/agent-run/${agentRunId}`;
@@ -722,7 +763,7 @@ export const getAgentStatus = async (agentRunId: string): Promise<AgentRun> => {
 
     const response = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
       // Add cache: 'no-store' to prevent caching
       cache: 'no-store',
@@ -765,18 +806,18 @@ export const getAgentStatus = async (agentRunId: string): Promise<AgentRun> => {
 
 export const getAgentRuns = async (threadId: string): Promise<AgentRun[]> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /thread/.../agent-runs needs auth in local mode
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     const response = await fetch(`${API_URL}/thread/${threadId}/agent-runs`, {
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
       // Add cache: 'no-store' to prevent caching
       cache: 'no-store',
@@ -869,20 +910,20 @@ export const streamAgent = (
         return;
       }
 
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      // const supabase = createClient(); // Supabase client removed
+      const { data: authData } = await LocalAuth.getUser(); // Use local auth
+      const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev-stream' } : null; // Mock session for stream
+      // TODO: Review if backend stream needs auth/token in local mode
 
-      if (!session?.access_token) {
-        console.error('[STREAM] No auth token available');
-        callbacks.onError(new Error('Authentication required'));
+      if (!mockSession?.access_token) {
+        console.error('[STREAM] No auth token available (mock)');
+        callbacks.onError(new Error('Authentication required (mock)'));
         callbacks.onClose();
         return;
       }
 
       const url = new URL(`${API_URL}/agent-run/${agentRunId}/stream`);
-      url.searchParams.append('token', session.access_token);
+      url.searchParams.append('token', mockSession.access_token); // Use mock token
 
       console.log(`[STREAM] Creating EventSource for ${agentRunId}`);
       const eventSource = new EventSource(url.toString());
@@ -1090,10 +1131,10 @@ export const createSandboxFile = async (
   content: string,
 ): Promise<void> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /sandboxes/.../files needs auth in local mode
 
     // Use FormData to handle both text and binary content more reliably
     const formData = new FormData();
@@ -1104,8 +1145,8 @@ export const createSandboxFile = async (
     formData.append('file', blob, filePath.split('/').pop() || 'file');
 
     const headers: Record<string, string> = {};
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
+    if (mockSession?.access_token) {
+      headers['Authorization'] = `Bearer ${mockSession.access_token}`; // Use mock token
     }
 
     const response = await fetch(`${API_URL}/sandboxes/${sandboxId}/files`, {
@@ -1143,17 +1184,17 @@ export const createSandboxFileJson = async (
   content: string,
 ): Promise<void> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /sandboxes/.../files/json needs auth in local mode
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
+    if (mockSession?.access_token) {
+      headers['Authorization'] = `Bearer ${mockSession.access_token}`; // Use mock token
     }
 
     const response = await fetch(
@@ -1208,10 +1249,10 @@ export const listSandboxFiles = async (
   path: string,
 ): Promise<FileInfo[]> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /sandboxes/.../files needs auth in local mode (for listing)
 
     const url = new URL(`${API_URL}/sandboxes/${sandboxId}/files`);
     
@@ -1222,8 +1263,8 @@ export const listSandboxFiles = async (
     url.searchParams.append('path', normalizedPath);
 
     const headers: Record<string, string> = {};
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
+    if (mockSession?.access_token) {
+      headers['Authorization'] = `Bearer ${mockSession.access_token}`; // Use mock token
     }
 
     const response = await fetch(url.toString(), {
@@ -1257,10 +1298,10 @@ export const getSandboxFileContent = async (
   path: string,
 ): Promise<string | Blob> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /sandboxes/.../files/content needs auth in local mode
 
     const url = new URL(`${API_URL}/sandboxes/${sandboxId}/files/content`);
     
@@ -1271,8 +1312,8 @@ export const getSandboxFileContent = async (
     url.searchParams.append('path', normalizedPath);
 
     const headers: Record<string, string> = {};
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
+    if (mockSession?.access_token) {
+      headers['Authorization'] = `Bearer ${mockSession.access_token}`; // Use mock token
     }
 
     const response = await fetch(url.toString(), {
@@ -1312,76 +1353,46 @@ export const getSandboxFileContent = async (
 // Function to get public projects
 export const getPublicProjects = async (): Promise<Project[]> => {
   try {
-    const supabase = createClient();
-
-    // Query for threads that are marked as public
-    const { data: publicThreads, error: threadsError } = await supabase
-      .from('threads')
-      .select('project_id')
-      .eq('is_public', true);
-
-    if (threadsError) {
-      console.error('Error fetching public threads:', threadsError);
+    console.log('[RxDB] Fetching public projects');
+    const db = await getDatabase();
+    if (!db.projects) {
+      console.warn("[RxDB] projects collection not found for getPublicProjects. Ensure it's added to the database.");
       return [];
     }
 
-    // If no public threads found, return empty array
-    if (!publicThreads?.length) {
-      return [];
-    }
+    const publicProjectsQuery = db.projects.find({
+      selector: {
+        is_public: true // Filter for public projects
+      }
+    });
+    const projectsDocs = await publicProjectsQuery.exec();
 
-    // Extract unique project IDs from public threads
-    const publicProjectIds = [
-      ...new Set(publicThreads.map((thread) => thread.project_id)),
-    ].filter(Boolean);
+    console.log('[RxDB] Raw public projects from DB:', projectsDocs.length, projectsDocs);
 
-    // If no valid project IDs, return empty array
-    if (!publicProjectIds.length) {
-      return [];
-    }
+    const mappedProjects: Project[] = projectsDocs.map(doc => {
+      const plainDoc = doc.toJSON();
+      return {
+        id: plainDoc.id,
+        name: plainDoc.name || '',
+        description: plainDoc.description || '',
+        account_id: plainDoc.account_id || 'public-account', // Or however public projects are attributed
+        created_at: plainDoc.created_at || new Date().toISOString(),
+        updated_at: plainDoc.updated_at || new Date().toISOString(),
+        sandbox: plainDoc.sandbox || {
+          id: '',
+          pass: '',
+          vnc_preview: '',
+          sandbox_url: '',
+        },
+        is_public: true,
+      };
+    });
 
-    // Get the projects that have public threads
-    const { data: projects, error: projectsError } = await supabase
-      .from('projects')
-      .select('*')
-      .in('project_id', publicProjectIds);
-
-    if (projectsError) {
-      console.error('Error fetching public projects:', projectsError);
-      return [];
-    }
-
-    console.log(
-      '[API] Raw public projects from DB:',
-      projects?.length,
-      projects,
-    );
-
-    // Map database fields to our Project type
-    const mappedProjects: Project[] = (projects || []).map((project) => ({
-      id: project.project_id,
-      name: project.name || '',
-      description: project.description || '',
-      account_id: project.account_id,
-      created_at: project.created_at,
-      updated_at: project.updated_at,
-      sandbox: project.sandbox || {
-        id: '',
-        pass: '',
-        vnc_preview: '',
-        sandbox_url: '',
-      },
-      is_public: true, // Mark these as public projects
-    }));
-
-    console.log(
-      '[API] Mapped public projects for frontend:',
-      mappedProjects.length,
-    );
-
+    console.log('[RxDB] Mapped public projects for frontend:', mappedProjects.length);
     return mappedProjects;
+
   } catch (err) {
-    console.error('Error fetching public projects:', err);
+    console.error('Error fetching public projects from RxDB:', err);
     handleApiError(err, { operation: 'load public projects', resource: 'public projects' });
     return [];
   }
@@ -1392,13 +1403,13 @@ export const initiateAgent = async (
   formData: FormData,
 ): Promise<InitiateAgentResponse> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /agent/initiate needs auth in local mode
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     if (!API_URL) {
@@ -1414,7 +1425,7 @@ export const initiateAgent = async (
     const response = await fetch(`${API_URL}/agent/initiate`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
       body: formData,
       cache: 'no-store',
@@ -1566,20 +1577,20 @@ export const createCheckoutSession = async (
   request: CreateCheckoutSessionRequest,
 ): Promise<CreateCheckoutSessionResponse> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /billing/create-checkout-session needs auth in local mode
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     const response = await fetch(`${API_URL}/billing/create-checkout-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
       body: JSON.stringify(request),
     });
@@ -1633,20 +1644,20 @@ export const createPortalSession = async (
   request: CreatePortalSessionRequest,
 ): Promise<{ url: string }> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /billing/create-portal-session needs auth in local mode
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     const response = await fetch(`${API_URL}/billing/create-portal-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
       body: JSON.stringify(request),
     });
@@ -1675,18 +1686,18 @@ export const createPortalSession = async (
 
 export const getSubscription = async (): Promise<SubscriptionStatus> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /billing/subscription needs auth in local mode
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     const response = await fetch(`${API_URL}/billing/subscription`, {
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
     });
 
@@ -1713,18 +1724,18 @@ export const getSubscription = async (): Promise<SubscriptionStatus> => {
 
 export const getAvailableModels = async (): Promise<AvailableModelsResponse> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /billing/available-models needs auth in local mode
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     const response = await fetch(`${API_URL}/billing/available-models`, {
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
     });
 
@@ -1752,18 +1763,18 @@ export const getAvailableModels = async (): Promise<AvailableModelsResponse> => 
 
 export const checkBillingStatus = async (): Promise<BillingStatusResponse> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /billing/check-status needs auth in local mode
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     const response = await fetch(`${API_URL}/billing/check-status`, {
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
     });
 
@@ -1796,13 +1807,13 @@ export interface TranscriptionResponse {
 // Transcription API Functions
 export const transcribeAudio = async (audioFile: File): Promise<TranscriptionResponse> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // const supabase = createClient(); // Supabase client removed
+    const { data: authData } = await LocalAuth.getUser(); // Use local auth
+    const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+    // TODO: Review if backend /transcription needs auth in local mode
 
-    if (!session?.access_token) {
-      throw new Error('No access token available');
+    if (!mockSession?.access_token) {
+      throw new Error('No access token available (mock)');
     }
 
     const formData = new FormData();
@@ -1811,7 +1822,7 @@ export const transcribeAudio = async (audioFile: File): Promise<TranscriptionRes
     const response = await fetch(`${API_URL}/transcription`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
       },
       body: formData,
     });
@@ -1838,18 +1849,18 @@ export const transcribeAudio = async (audioFile: File): Promise<TranscriptionRes
 };
 
 export const getAgentBuilderChatHistory = async (agentId: string): Promise<{messages: Message[], thread_id: string | null}> => {
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // const supabase = createClient(); // Supabase client removed
+  const { data: authData } = await LocalAuth.getUser(); // Use local auth
+  const mockSession = authData.user ? { access_token: 'mock-token-for-local-dev' } : null; // Mock session
+  // TODO: Review if backend /agents/.../builder-chat-history needs auth in local mode
 
-  if (!session?.access_token) {
-    throw new Error('No access token available');
+  if (!mockSession?.access_token) {
+    throw new Error('No access token available (mock)');
   }
 
   const response = await fetch(`${API_URL}/agents/${agentId}/builder-chat-history`, {
     headers: {
-      Authorization: `Bearer ${session.access_token}`,
+      Authorization: `Bearer ${mockSession.access_token}`, // Use mock token
     },
   });
 

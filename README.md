@@ -17,7 +17,7 @@
 🔍 **Smart Search** - Web crawling, data extraction, and research automation  
 ⚡ **Real-time Execution** - Isolated Docker environments for secure agent operations  
 📊 **Dashboard & Analytics** - Comprehensive monitoring and management interface  
-🔐 **Enterprise Ready** - Authentication, team management, billing integration  
+🔐 **Enterprise Ready** - Pluggable authentication (local mock for dev), team management, billing integration
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue)](./LICENSE)
 [![GitHub Repo stars](https://img.shields.io/github/stars/cetinmustafa83/suna-ai-platform)](https://github.com/cetinmustafa83/suna-ai-platform)
@@ -92,10 +92,16 @@ npm run dev
 ANTHROPIC_API_KEY=your_anthropic_key
 OPENAI_API_KEY=your_openai_key
 
-# Database
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# Database (Backend database is pluggable, specific variables depend on choice)
+# For local development with mock auth, specific DB setup is not strictly enforced by the core.
+# SUPABASE_URL=your_supabase_url # Removed
+# SUPABASE_ANON_KEY=your_supabase_anon_key # Removed
+# SUPABASE_SERVICE_ROLE_KEY=your_service_role_key # Removed
+
+# Backend Mock Authentication (for local development)
+# Set to "true" to enable mock authentication, bypassing external JWT validation.
+# Uses a default MOCK_USER_ID ("mock-user-id-backend") for API requests.
+MOCK_AUTH_ENABLED=true
 
 # Redis
 REDIS_URL=redis://localhost:6379
@@ -107,9 +113,11 @@ SENTRY_DSN=your_sentry_dsn
 
 **Frontend (.env)**
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+# NEXT_PUBLIC_SUPABASE_URL=your_supabase_url # Removed
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key # Removed
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+# For local development, frontend uses RxDB (in-browser) and mock auth.
+# No specific frontend env vars needed for mock auth itself.
 ```
 
 ## Table of Contents
@@ -136,7 +144,7 @@ Suna is built with a modern, scalable architecture designed for production workl
 - **🐍 Python/FastAPI** - High-performance REST API with async support
 - **🔀 Thread Management** - Concurrent agent execution and state management  
 - **🤖 LLM Integration** - Multi-provider support (Anthropic, OpenAI, etc.) via LiteLLM
-- **🔐 Authentication** - JWT-based auth with Supabase integration
+- **🔐 Authentication** - JWT-based auth (pluggable, with local mock system for development)
 - **📊 Monitoring** - Built-in metrics, logging, and observability
 
 ### Frontend Dashboard
@@ -154,7 +162,8 @@ Suna is built with a modern, scalable architecture designed for production workl
 - **🔧 Tool Integration** - Extensible plugin system with MCP protocol
 
 ### Database & Storage
-- **🗄️ Supabase/PostgreSQL** - Scalable relational database with real-time features
+- **🗄️ Pluggable Backend Database** - Backend can be integrated with PostgreSQL or other databases.
+- **💻 RxDB (Frontend)** - Used for local development data persistence in the browser.
 - **⚡ Redis** - High-performance caching and session management
 - **🗂️ File Storage** - S3-compatible object storage for agent artifacts
 - **🔄 Migration System** - Database versioning and schema management
@@ -402,17 +411,19 @@ Handles data persistence with authentication, user management, conversation hist
 
 ## Self-Hosting
 
-Suna can be self-hosted on your own infrastructure using our setup wizard. For a comprehensive guide to self-hosting Suna, please refer to our [Self-Hosting Guide](./docs/SELF-HOSTING.md).
+**Note:** This section is currently outdated due to the removal of Supabase as a direct dependency for local development. It will be updated to reflect a more generic backend and database setup process for self-hosting. For local development, please refer to the Docker or local Python/Node setup instructions above, which now use a mock authentication system and RxDB for frontend data.
 
-The setup process includes:
+Suna can be self-hosted on your own infrastructure. For a comprehensive guide to self-hosting Suna, please refer to our (soon to be updated) [Self-Hosting Guide](./docs/SELF-HOSTING.md).
 
-- Setting up a Supabase project for database and authentication
-- Configuring Redis for caching and session management
-- Setting up Daytona for secure agent execution
-- Integrating with LLM providers (Anthropic, OpenAI, Groq, etc.)
-- Configuring web search and scraping capabilities
+The setup process will typically include:
 
-### Quick Start
+- Setting up your chosen backend database (e.g., PostgreSQL).
+- Configuring Redis for caching and session management.
+- Setting up Daytona (or similar container execution environment) for secure agent execution.
+- Integrating with LLM providers (Anthropic, OpenAI, Groq, etc.).
+- Configuring web search and scraping capabilities.
+
+### Quick Start (Example - Needs Update)
 
 1. **Clone the repository**:
 
@@ -454,7 +465,7 @@ We welcome contributions from the community! Please see our [Contributing Guide]
 ### Technologies
 
 - [Daytona](https://daytona.io/) - Secure agent execution environment
-- [Supabase](https://supabase.com/) - Database and authentication
+- [RxDB](https://rxdb.info/) - Local frontend database for development
 - [Playwright](https://playwright.dev/) - Browser automation
 - [OpenAI](https://openai.com/) - LLM provider
 - [Anthropic](https://www.anthropic.com/) - LLM provider

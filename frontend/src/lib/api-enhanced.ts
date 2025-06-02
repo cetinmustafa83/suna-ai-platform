@@ -1,5 +1,6 @@
-import { createClient } from '@/lib/supabase/client';
-import { backendApi, supabaseClient } from './api-client';
+import * as LocalAuth from '@/lib/auth'; // Import local auth functions
+import { getDatabase } from '@/lib/rxdb/database'; // Import RxDB
+import { backendApi, supabaseClient } from './api-client'; // supabaseClient might need to be phased out or adapted
 import { handleApiSuccess } from './error-handler';
 import { 
   Project, 
@@ -20,294 +21,255 @@ import {
 
 export * from './api';
 
+import { v4 as uuidv4 } from 'uuid'; // For generating IDs
+
 export const projectsApi = {
   async getAll(): Promise<Project[]> {
-    const result = await supabaseClient.execute(
-      async () => {
-        const supabase = createClient();
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          return { data: null, error: userError };
+    // Replaces the supabaseClient.execute wrapper for direct RxDB call
+    try {
+      const { data: userData, error: userError } = await LocalAuth.getUser();
+      if (userError) {
+        console.error('Error getting current user (mock):', userError);
+        return [];
+      }
+      if (!userData.user) {
+        console.log('[API-Enhanced] No user logged in (mock), returning empty projects array');
+        return [];
+      }
+      const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`;
+
+      console.log(`[RxDB-Enhanced] Fetching projects for account_id: ${MOCK_ACCOUNT_ID}`);
+      const db = await getDatabase();
+      if (!db.projects) {
+        console.warn("[RxDB-Enhanced] projects collection not found.");
+        return [];
+      }
+
+      const projectsQuery = db.projects.find({
+        selector: {
+          // account_id: MOCK_ACCOUNT_ID // TODO: Add account_id to project schema for filtering
         }
+      });
+      const projectsDocs = await projectsQuery.exec();
 
-        if (!userData.user) {
-          return { data: [], error: null };
-        }
+      const mappedProjects: Project[] = projectsDocs.map(doc => ({
+        ...doc.toJSON(),
+        id: doc.id, // Ensure 'id' is mapped if RxDB uses a different primary key name internally
+      })) as Project[];
 
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('account_id', userData.user.id);
-
-        if (error) {
-          if (error.code === '42501' && error.message.includes('has_role_on_account')) {
-            return { data: [], error: null };
-          }
-          return { data: null, error };
-        }
-
-        const mappedProjects: Project[] = (data || []).map((project) => ({
-          id: project.project_id,
-          name: project.name || '',
-          description: project.description || '',
-          account_id: project.account_id,
-          created_at: project.created_at,
-          updated_at: project.updated_at,
-          sandbox: project.sandbox || {
-            id: '',
-            pass: '',
-            vnc_preview: '',
-            sandbox_url: '',
-          },
-        }));
-
-        return { data: mappedProjects, error: null };
-      },
-      { operation: 'load projects', resource: 'projects' }
-    );
-
-    return result.data || [];
+      console.log('[RxDB-Enhanced] Mapped projects:', mappedProjects.length);
+      return mappedProjects;
+    } catch (error) {
+      console.error("Error in projectsApi.getAll (RxDB):", error);
+      // Consider how error handling from supabaseClient.execute should be replicated
+      return [];
+    }
   },
 
   async getById(projectId: string): Promise<Project | null> {
-    const result = await supabaseClient.execute(
-      async () => {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('project_id', projectId)
-          .single();
+    try {
+      console.log(`[RxDB-Enhanced] Fetching project by id: ${projectId}`);
+      const db = await getDatabase();
+      if (!db.projects) {
+        console.warn(`[RxDB-Enhanced] projects collection not found for getById(${projectId}).`);
+        return null;
+      }
+      const projectDoc = await db.projects.findOne(projectId).exec();
 
-        if (error) {
-          if (error.code === 'PGRST116') {
-            return { data: null, error: new Error(`Project not found: ${projectId}`) };
-          }
-          return { data: null, error };
-        }
+      if (!projectDoc) {
+        console.warn(`[RxDB-Enhanced] Project ${projectId} not found.`);
+        return null;
+      }
 
-        // Ensure sandbox is active if it exists
-        if (data.sandbox?.id) {
-          backendApi.post(`/project/${projectId}/sandbox/ensure-active`, undefined, {
-            showErrors: false,
-            errorContext: { silent: true }
-          });
-        }
+      const plainDoc = projectDoc.toJSON();
+      const MOCK_ACCOUNT_ID = `mock-account-for-${(await LocalAuth.getUser()).data.user?.id || 'unknown_user'}`;
 
-        const mappedProject: Project = {
-          id: data.project_id,
-          name: data.name || '',
-          description: data.description || '',
-          account_id: data.account_id,
-          is_public: data.is_public || false,
-          created_at: data.created_at,
-          sandbox: data.sandbox || {
-            id: '',
-            pass: '',
-            vnc_preview: '',
-            sandbox_url: '',
-          },
-        };
+      if (plainDoc.sandbox?.id) {
+        // Backend API call for sandbox activation remains unchanged for now
+        backendApi.post(`/project/${projectId}/sandbox/ensure-active`, undefined, {
+          showErrors: false,
+          errorContext: { silent: true }
+        });
+      }
 
-        return { data: mappedProject, error: null };
-      },
-      { operation: 'load project', resource: `project ${projectId}` }
-    );
-
-    return result.data || null;
+      return {
+        ...plainDoc,
+        id: plainDoc.id,
+        account_id: plainDoc.account_id || MOCK_ACCOUNT_ID, // Ensure account_id consistency
+      } as Project;
+    } catch (error) {
+      console.error(`Error in projectsApi.getById (RxDB) for ${projectId}:`, error);
+      return null;
+    }
   },
 
   async create(projectData: { name: string; description: string }, accountId?: string): Promise<Project | null> {
-    const result = await supabaseClient.execute(
-      async () => {
-        const supabase = createClient();
-        
-        if (!accountId) {
-          const { data: userData, error: userError } = await supabase.auth.getUser();
-          if (userError) return { data: null, error: userError };
-          if (!userData.user) return { data: null, error: new Error('You must be logged in to create a project') };
-          accountId = userData.user.id;
+    try {
+      if (!accountId) {
+        const { data: userData, error: userError } = await LocalAuth.getUser();
+        if (userError || !userData.user) {
+          throw new Error('User not authenticated for createProject (mock)');
         }
+        accountId = `mock-account-for-${userData.user.id}`;
+      }
 
-        const { data, error } = await supabase
-          .from('projects')
-          .insert({
-            name: projectData.name,
-            description: projectData.description || null,
-            account_id: accountId,
-          })
-          .select()
-          .single();
+      console.log(`[RxDB-Enhanced] Creating project for account_id: ${accountId}`);
+      const db = await getDatabase();
+      if (!db.projects) throw new Error("Projects collection not available");
 
-        if (error) return { data: null, error };
-
-        const project: Project = {
-          id: data.project_id,
-          name: data.name,
-          description: data.description || '',
-          account_id: data.account_id,
-          created_at: data.created_at,
-          sandbox: { id: '', pass: '', vnc_preview: '' },
-        };
-
-        return { data: project, error: null };
-      },
-      { operation: 'create project', resource: 'project' }
-    );
-
-    return result.data || null;
+      const newProjectId = uuidv4();
+      const newProjectRxData = {
+        id: newProjectId,
+        name: projectData.name,
+        description: projectData.description || '',
+        account_id: accountId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_public: false,
+        sandbox: { id: '', pass: '', vnc_preview: '', sandbox_url: '' },
+      };
+      const newDoc = await db.projects.insert(newProjectRxData);
+      return { ...newDoc.toJSON(), id: newDoc.id } as Project;
+    } catch (error) {
+      console.error("Error in projectsApi.create (RxDB):", error);
+      return null;
+    }
   },
 
-  async update(projectId: string, data: Partial<Project>): Promise<Project | null> {
-    if (!projectId || projectId === '') {
-      throw new Error('Cannot update project: Invalid project ID');
+  async update(projectId: string, updateData: Partial<Project>): Promise<Project | null> {
+    if (!projectId) throw new Error('Cannot update project: Invalid project ID');
+    try {
+      console.log(`[RxDB-Enhanced] Updating project ID: ${projectId}`);
+      const db = await getDatabase();
+      if (!db.projects) throw new Error("Projects collection not available");
+
+      const projectDoc = await db.projects.findOne(projectId).exec();
+      if (!projectDoc) throw new Error(`Project ${projectId} not found.`);
+
+      const dataToSet = { ...updateData, updated_at: new Date().toISOString() };
+      delete dataToSet.id;
+      delete dataToSet.account_id;
+
+      await projectDoc.patch(dataToSet);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('project-updated', { detail: { projectId, updatedData: projectDoc.toJSON() } }));
+      }
+      return { ...projectDoc.toJSON(), id: projectDoc.id } as Project;
+    } catch (error) {
+      console.error(`Error in projectsApi.update (RxDB) for ${projectId}:`, error);
+      return null;
     }
-
-    const result = await supabaseClient.execute(
-      async () => {
-        const supabase = createClient();
-        const { data: updatedData, error } = await supabase
-          .from('projects')
-          .update(data)
-          .eq('project_id', projectId)
-          .select()
-          .single();
-
-        if (error) return { data: null, error };
-        if (!updatedData) return { data: null, error: new Error('No data returned from update') };
-
-        // Dispatch custom event for project updates
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(
-            new CustomEvent('project-updated', {
-              detail: {
-                projectId,
-                updatedData: {
-                  id: updatedData.project_id,
-                  name: updatedData.name,
-                  description: updatedData.description,
-                },
-              },
-            }),
-          );
-        }
-
-        const project: Project = {
-          id: updatedData.project_id,
-          name: updatedData.name,
-          description: updatedData.description || '',
-          account_id: updatedData.account_id,
-          created_at: updatedData.created_at,
-          sandbox: updatedData.sandbox || {
-            id: '',
-            pass: '',
-            vnc_preview: '',
-            sandbox_url: '',
-          },
-        };
-
-        return { data: project, error: null };
-      },
-      { operation: 'update project', resource: `project ${projectId}` }
-    );
-    return result.data || null;
   },
 
   async delete(projectId: string): Promise<boolean> {
-    const result = await supabaseClient.execute(
-      async () => {
-        const supabase = createClient();
-        const { error } = await supabase
-          .from('projects')
-          .delete()
-          .eq('project_id', projectId);
-
-        return { data: !error, error };
-      },
-      { operation: 'delete project', resource: `project ${projectId}` }
-    );
-    return result.success;
+    try {
+      console.log(`[RxDB-Enhanced] Deleting project ID: ${projectId}`);
+      const db = await getDatabase();
+      if (!db.projects) throw new Error("Projects collection not available");
+      const projectDoc = await db.projects.findOne(projectId).exec();
+      if (!projectDoc) {
+        console.warn(`[RxDB-Enhanced] Project ${projectId} not found for deletion.`);
+        return false; // Or true if "not found" means "successfully deleted" idempotent-style
+      }
+      await projectDoc.remove();
+      return true;
+    } catch (error) {
+      console.error(`Error in projectsApi.delete (RxDB) for ${projectId}:`, error);
+      return false;
+    }
   },
 };
 
 export const threadsApi = {
   async getAll(projectId?: string): Promise<Thread[]> {
-    const result = await supabaseClient.execute(
-      async () => {
-        const supabase = createClient();
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) return { data: null, error: userError };
-        if (!userData.user) return { data: [], error: null };
+    try {
+      const { data: userData, error: userError } = await LocalAuth.getUser();
+      if (userError || !userData.user) {
+        console.error('[API-Enhanced] User not authenticated for threadsApi.getAll:', userError);
+        return [];
+      }
+      const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`;
 
-        let query = supabase.from('threads').select('*').eq('account_id', userData.user.id);
-        
-        if (projectId) {
-          query = query.eq('project_id', projectId);
-        }
+      console.log(`[RxDB-Enhanced] Fetching threads for account_id: ${MOCK_ACCOUNT_ID}` + (projectId ? ` and project_id: ${projectId}` : ""));
+      const db = await getDatabase();
+      if (!db.threads) {
+        console.warn("[RxDB-Enhanced] threads collection not found.");
+        return [];
+      }
 
-        const { data, error } = await query;
-        if (error) return { data: null, error };
+      const selector: any = {
+        // account_id: MOCK_ACCOUNT_ID // TODO: Add account_id to thread schema for filtering
+      };
+      if (projectId) {
+        selector.project_id = projectId;
+      }
 
-        const mappedThreads: Thread[] = (data || []).map((thread) => ({
-          thread_id: thread.thread_id,
-          account_id: thread.account_id,
-          project_id: thread.project_id,
-          created_at: thread.created_at,
-          updated_at: thread.updated_at,
-        }));
+      const threadsQuery = db.threads.find({ selector });
+      const threadsDocs = await threadsQuery.exec();
 
-        return { data: mappedThreads, error: null };
-      },
-      { operation: 'load threads', resource: projectId ? `threads for project ${projectId}` : 'threads' }
-    );
+      const mappedThreads: Thread[] = threadsDocs.map(doc => ({
+        ...doc.toJSON(),
+        thread_id: doc.id, // Map RxDB 'id' to 'thread_id'
+      })) as Thread[];
 
-    return result.data || [];
+      console.log('[RxDB-Enhanced] Mapped threads:', mappedThreads.length);
+      return mappedThreads;
+    } catch (error) {
+      console.error("Error in threadsApi.getAll (RxDB):", error);
+      return [];
+    }
   },
 
   async getById(threadId: string): Promise<Thread | null> {
-    const result = await supabaseClient.execute(
-      async () => {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('threads')
-          .select('*')
-          .eq('thread_id', threadId)
-          .single();
+    try {
+      console.log(`[RxDB-Enhanced] Fetching thread by id: ${threadId}`);
+      const db = await getDatabase();
+      if (!db.threads) {
+        console.warn(`[RxDB-Enhanced] threads collection not found for getById(${threadId}).`);
+        return null;
+      }
+      const threadDoc = await db.threads.findOne(threadId).exec();
 
-        return { data, error };
-      },
-      { operation: 'load thread', resource: `thread ${threadId}` }
-    );
-
-    return result.data || null;
+      if (!threadDoc) {
+        console.warn(`[RxDB-Enhanced] Thread ${threadId} not found.`);
+        return null;
+      }
+      return { ...threadDoc.toJSON(), thread_id: threadDoc.id } as Thread;
+    } catch (error) {
+      console.error(`Error in threadsApi.getById (RxDB) for ${threadId}:`, error);
+      return null;
+    }
   },
 
   async create(projectId: string): Promise<Thread | null> {
-    const result = await supabaseClient.execute(
-      async () => {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          return { data: null, error: new Error('You must be logged in to create a thread') };
-        }
+    try {
+      const { data: userData, error: userError } = await LocalAuth.getUser();
+      if (userError || !userData.user) {
+        throw new Error('User not authenticated for threadsApi.create (mock)');
+      }
+      const MOCK_ACCOUNT_ID = `mock-account-for-${userData.user.id}`;
 
-        const { data, error } = await supabase
-          .from('threads')
-          .insert({
-            project_id: projectId,
-            account_id: user.id,
-          })
-          .select()
-          .single();
+      console.log(`[RxDB-Enhanced] Creating thread for project_id: ${projectId}, account_id: ${MOCK_ACCOUNT_ID}`);
+      const db = await getDatabase();
+      if (!db.threads) throw new Error("Threads collection not available");
 
-        return { data, error };
-      },
-      { operation: 'create thread', resource: 'thread' }
-    );
-    return result.data || null;
+      const newThreadId = uuidv4();
+      const newThreadRxData = {
+        id: newThreadId,
+        project_id: projectId,
+        account_id: MOCK_ACCOUNT_ID,
+        created_by: userData.user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_public: false,
+      };
+      const newDoc = await db.threads.insert(newThreadRxData);
+      return { ...newDoc.toJSON(), thread_id: newDoc.id } as Thread;
+    } catch (error) {
+      console.error("Error in threadsApi.create (RxDB):", error);
+      return null;
+    }
   },
 };
 

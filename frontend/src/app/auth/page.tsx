@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import GoogleSignIn from '@/components/GoogleSignIn';
+// import GoogleSignIn from '@/components/GoogleSignIn'; // Removed
 import { FlickeringGrid } from '@/components/home/ui/flickering-grid';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useState, useEffect, useRef, Suspense } from 'react';
@@ -387,13 +387,15 @@ function LoginContent() {
                 </div>
               )}
 
-              {/* Google Sign In */}
-              <div className="w-full">
-                <GoogleSignIn returnUrl={returnUrl || undefined} />
-              </div>
+              {/* Google Sign In - REMOVED */}
+              {/* <div className="w-full"> */}
+              {/* <GoogleSignIn returnUrl={returnUrl || undefined} /> */}
+              {/* </div> */}
 
               {/* Divider */}
-              <div className="relative my-8">
+              {/* <div className="relative my-8"> */}
+              {/* Adjust margin if Google Sign In and Divider are removed */}
+              <div className="relative mt-0 mb-8">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-border"></div>
                 </div>
