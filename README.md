@@ -1,54 +1,376 @@
 <div align="center">
 
-# Suna - Open Source Generalist AI Agent
+# 🌟 Suna AI Platform - Open Source AI Agent Platform
 
-(that acts on your behalf)
+*Build, Deploy, and Scale AI Agents with Complete Computer Use Capabilities*
 
 ![Suna Screenshot](frontend/public/banner.png)
 
-Suna is a fully open source AI assistant that helps you accomplish real-world tasks with ease. Through natural conversation, Suna becomes your digital companion for research, data analysis, and everyday challenges—combining powerful capabilities with an intuitive interface that understands what you need and delivers results.
+**Suna** is a comprehensive, open-source AI agent platform that enables you to create sophisticated AI agents capable of real-world computer interactions. Whether you're automating business processes, building intelligent assistants, or creating custom AI workflows, Suna provides the complete infrastructure you need.
 
-Suna's powerful toolkit includes seamless browser automation to navigate the web and extract data, file management for document creation and editing, web crawling and extended search capabilities, command-line execution for system tasks, website deployment, and integration with various APIs and services. These capabilities work together harmoniously, allowing Suna to solve your complex problems and automate workflows through simple conversations!
+## ✨ Key Features
 
-[![License](https://img.shields.io/badge/License-Apache--2.0-blue)](./license)
-[![Discord Follow](https://dcbadge.limes.pink/api/server/Py6pCBUUPw?style=flat)](https://discord.gg/Py6pCBUUPw)
-[![Twitter Follow](https://img.shields.io/twitter/follow/kortixai)](https://x.com/kortixai)
-[![GitHub Repo stars](https://img.shields.io/github/stars/kortix-ai/suna)](https://github.com/kortix-ai/suna)
-[![Issues](https://img.shields.io/github/issues/kortix-ai/suna)](https://github.com/kortix-ai/suna/labels/bug)
+🤖 **Full Computer Use** - Agents can control browsers, execute commands, manage files  
+🔧 **Extensible Architecture** - Plugin system with MCP (Model Context Protocol) support  
+🌐 **Web Automation** - Advanced browser automation and web scraping capabilities  
+💾 **File Management** - Complete file system operations and document processing  
+🔍 **Smart Search** - Web crawling, data extraction, and research automation  
+⚡ **Real-time Execution** - Isolated Docker environments for secure agent operations  
+📊 **Dashboard & Analytics** - Comprehensive monitoring and management interface  
+🔐 **Enterprise Ready** - Authentication, team management, billing integration  
+
+[![License](https://img.shields.io/badge/License-Apache--2.0-blue)](./LICENSE)
+[![GitHub Repo stars](https://img.shields.io/github/stars/cetinmustafa83/suna-ai-platform)](https://github.com/cetinmustafa83/suna-ai-platform)
+[![Issues](https://img.shields.io/github/issues/cetinmustafa83/suna-ai-platform)](https://github.com/cetinmustafa83/suna-ai-platform/issues)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/cetinmustafa83/suna-ai-platform/ci.yml?branch=main)](https://github.com/cetinmustafa83/suna-ai-platform/actions)
 
 </div>
 
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Docker & Docker Compose** - For containerized deployment
+- **Node.js 18+** - For frontend development
+- **Python 3.11+** - For backend development
+- **Git** - For source code management
+
+### 🐳 Docker Setup (Recommended)
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/cetinmustafa83/suna-ai-platform.git
+   cd suna-ai-platform
+   ```
+
+2. **Environment Configuration**
+   ```bash
+   # Copy environment files
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   
+   # Edit with your API keys and configurations
+   nano backend/.env
+   nano frontend/.env
+   ```
+
+3. **Start the platform**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+
+### 🛠️ Development Setup
+
+#### Backend Development
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn api:app --reload --port 8000
+```
+
+#### Frontend Development
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 🔑 Configuration
+
+#### Required Environment Variables
+
+**Backend (.env)**
+```env
+# AI Model Configuration
+ANTHROPIC_API_KEY=your_anthropic_key
+OPENAI_API_KEY=your_openai_key
+
+# Database
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Other services
+LANGFUSE_SECRET_KEY=your_langfuse_key
+SENTRY_DSN=your_sentry_dsn
+```
+
+**Frontend (.env)**
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+```
+
 ## Table of Contents
 
-- [Suna Architecture](#project-architecture)
+- [🏗️ Architecture](#architecture)
   - [Backend API](#backend-api)
-  - [Frontend](#frontend)
-  - [Agent Docker](#agent-docker)
-  - [Supabase Database](#supabase-database)
-- [Use Cases](#use-cases)
-- [Self-Hosting](#self-hosting)
-- [Acknowledgements](#acknowledgements)
-- [License](#license)
+  - [Frontend Dashboard](#frontend-dashboard)
+  - [Agent Runtime](#agent-runtime)
+  - [Database & Storage](#database--storage)
+- [🎯 Use Cases](#use-cases)
+- [🔧 Agent Tools](#agent-tools)
+- [📖 API Documentation](#api-documentation)
+- [🚀 Deployment](#deployment)
+- [🤝 Contributing](#contributing)
+- [📄 License](#license)
 
-## Project Architecture
+## 🏗️ Architecture
 
 ![Architecture Diagram](docs/images/diagram.png)
 
-Suna consists of four main components:
+Suna is built with a modern, scalable architecture designed for production workloads:
 
 ### Backend API
+- **🐍 Python/FastAPI** - High-performance REST API with async support
+- **🔀 Thread Management** - Concurrent agent execution and state management  
+- **🤖 LLM Integration** - Multi-provider support (Anthropic, OpenAI, etc.) via LiteLLM
+- **🔐 Authentication** - JWT-based auth with Supabase integration
+- **📊 Monitoring** - Built-in metrics, logging, and observability
 
-Python/FastAPI service that handles REST endpoints, thread management, and LLM integration with Anthropic, and others via LiteLLM.
+### Frontend Dashboard
+- **⚛️ Next.js/React** - Modern, responsive web application
+- **🎨 Tailwind CSS** - Beautiful, customizable UI components
+- **📱 Responsive Design** - Optimized for desktop and mobile
+- **⚡ Real-time Updates** - WebSocket integration for live agent monitoring
+- **🔒 Role-based Access** - Team management and permission controls
 
-### Frontend
+### Agent Runtime
+- **🐳 Docker Containers** - Isolated, secure execution environments
+- **🌐 Browser Automation** - Headless Chrome with advanced web interaction
+- **💻 Code Execution** - Python, Node.js, and shell command support
+- **📁 File System Access** - Secure file operations with sandboxing
+- **🔧 Tool Integration** - Extensible plugin system with MCP protocol
 
-Next.js/React application providing a responsive UI with chat interface, dashboard, etc.
+### Database & Storage
+- **🗄️ Supabase/PostgreSQL** - Scalable relational database with real-time features
+- **⚡ Redis** - High-performance caching and session management
+- **🗂️ File Storage** - S3-compatible object storage for agent artifacts
+- **🔄 Migration System** - Database versioning and schema management
 
-### Agent Docker
+## 🎯 Use Cases
 
-Isolated execution environment for every agent - with browser automation, code interpreter, file system access, tool integration, and security features.
+### 🏢 Business Automation
+- **Data Research & Analysis** - Automated market research and competitive analysis
+- **Lead Generation** - Intelligent prospect discovery and qualification
+- **Content Creation** - Blog posts, reports, and marketing materials
+- **Process Automation** - Workflow optimization and task automation
 
-### Supabase Database
+### 🔬 Development & Testing
+- **Code Review & Analysis** - Automated code quality assessment
+- **API Testing** - Comprehensive endpoint testing and validation  
+- **Documentation Generation** - Automatic docs from code and specifications
+- **Deployment Automation** - CI/CD pipeline integration and management
+
+### 📊 Data Operations
+- **Web Scraping** - Large-scale data extraction and processing
+- **Data Pipeline Management** - ETL processes and data validation
+- **Report Generation** - Automated business intelligence reports
+- **Database Maintenance** - Schema optimization and data cleaning
+
+### 🎓 Research & Education
+- **Academic Research** - Literature reviews and data collection
+- **Learning Assistance** - Personalized tutoring and explanation
+- **Knowledge Base Creation** - Automated documentation and wikis
+- **Trend Analysis** - Market and technology trend identification
+
+## 🔧 Agent Tools
+
+Suna provides a comprehensive toolkit for agent development:
+
+### 🌐 Web & Browser Tools
+- **Browser Control** - Full Chrome automation with screenshot capabilities
+- **Web Scraping** - Advanced data extraction with smart parsing
+- **Search Integration** - Multi-engine search with result aggregation
+- **Form Automation** - Intelligent form filling and submission
+
+### 💾 File & Data Tools  
+- **File Operations** - Create, read, write, and manage files
+- **Data Processing** - CSV, JSON, XML parsing and transformation
+- **Image Processing** - Computer vision and image analysis
+- **Document Generation** - PDF, Word, and presentation creation
+
+### 💻 System & Development Tools
+- **Shell Execution** - Secure command-line operations
+- **Code Execution** - Multi-language code runner with safety checks
+- **API Integration** - RESTful API client with authentication
+- **Version Control** - Git operations and repository management
+
+### 🔌 Integration Tools
+- **MCP Protocol** - Model Context Protocol for external tool integration
+- **Database Connectors** - SQL and NoSQL database operations
+- **Cloud Services** - AWS, Azure, GCP integration
+- **Notification Systems** - Email, Slack, Discord, and webhook support
+
+## 📖 API Documentation
+
+### Core Endpoints
+
+#### Agent Management
+```http
+POST /api/agents                    # Create new agent
+GET /api/agents                     # List agents
+GET /api/agents/{id}               # Get agent details
+PUT /api/agents/{id}               # Update agent
+DELETE /api/agents/{id}            # Delete agent
+```
+
+#### Thread Operations
+```http
+POST /api/threads                   # Create thread
+GET /api/threads/{id}/messages     # Get messages
+POST /api/threads/{id}/messages    # Send message
+GET /api/threads/{id}/status       # Get thread status
+```
+
+#### Tool Management
+```http
+GET /api/tools                      # List available tools
+POST /api/tools/execute            # Execute tool
+GET /api/tools/{name}/schema       # Get tool schema
+```
+
+### WebSocket Events
+```javascript
+// Real-time agent updates
+ws://localhost:8000/ws/threads/{thread_id}
+
+// Event types:
+// - agent_started
+// - tool_executed  
+// - message_received
+// - thread_completed
+// - error_occurred
+```
+
+## 🚀 Deployment
+
+### Production Docker Deployment
+
+1. **Prepare environment**
+   ```bash
+   cp docker-compose.prod.yml docker-compose.yml
+   # Configure production environment variables
+   ```
+
+2. **Deploy with Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
+
+### Kubernetes Deployment
+
+```yaml
+# Example Kubernetes configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suna-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: suna-backend
+  template:
+    metadata:
+      labels:
+        app: suna-backend
+    spec:
+      containers:
+      - name: backend
+        image: suna/backend:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: suna-secrets
+              key: database-url
+```
+
+### Cloud Platform Deployment
+
+#### AWS ECS/Fargate
+- Complete ECS task definitions provided
+- Auto-scaling configuration
+- Load balancer integration
+- CloudWatch monitoring
+
+#### Azure Container Instances
+- ARM templates included
+- Azure Active Directory integration
+- Application Insights monitoring
+
+#### Google Cloud Run
+- Cloud Build configurations
+- IAM and security settings
+- Cloud SQL integration
+
+## 🤝 Contributing
+
+We welcome contributions from the community! Here's how to get started:
+
+### Development Workflow
+
+1. **Fork the repository**
+   ```bash
+   git clone https://github.com/your-username/suna-ai-platform.git
+   ```
+
+2. **Create feature branch**
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+
+3. **Set up development environment**
+   ```bash
+   make dev-setup  # Sets up local development environment
+   ```
+
+4. **Make your changes**
+   - Follow our coding standards
+   - Add tests for new features
+   - Update documentation
+
+5. **Run tests**
+   ```bash
+   make test           # Run all tests
+   make test-backend   # Backend tests only
+   make test-frontend  # Frontend tests only
+   ```
+
+6. **Submit pull request**
+   - Provide clear description
+   - Link related issues
+   - Ensure CI passes
+
+### Code Style & Standards
+
+- **Python**: Black, isort, pylint
+- **TypeScript**: ESLint, Prettier
+- **Commit messages**: Conventional Commits
+- **Documentation**: Clear docstrings and comments
+
+### Reporting Issues
+
+- Use GitHub Issues for bug reports
+- Include reproduction steps
+- Provide environment details
+- Add relevant logs/screenshots
+
+## 📄 License
 
 Handles data persistence with authentication, user management, conversation history, file storage, agent state, analytics, and real-time subscriptions.
 
