@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/cetinmustafa83/suna-ai-platform/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📚 Documentation
+    url: https://github.com/cetinmustafa83/suna-ai-platform#readme
+    about: Check our comprehensive documentation
+  - name: 🔧 Self-Hosting Guide
+    url: https://github.com/cetinmustafa83/suna-ai-platform/blob/main/docs/SELF-HOSTING.md
+    about: Learn how to self-host Suna AI Platform

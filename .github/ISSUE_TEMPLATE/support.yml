@@ -1,0 +1,143 @@
+name: 🆘 Support/Help
+description: Get help with using Suna AI Platform
+title: "[SUPPORT] "
+labels: ["question", "support"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for using Suna AI Platform! 🤖
+        
+        Before creating a support request, please:
+        - Check our [documentation](README.md)
+        - Search existing issues and discussions
+        - Try the [troubleshooting guide](docs/SELF-HOSTING.md)
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Support Category
+      description: What kind of help do you need?
+      options:
+        - Installation/Setup
+        - Configuration
+        - Agent Development
+        - Tool Integration
+        - API Usage
+        - Docker/Deployment
+        - Performance Issues
+        - Error Understanding
+        - Best Practices
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question/Issue
+      description: What specific help do you need?
+      placeholder: Describe your question or issue in detail
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What are you trying to accomplish?
+      placeholder: Describe your goal and what you've tried so far
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-taken
+    attributes:
+      label: Steps Already Taken
+      description: What have you already tried?
+      placeholder: |
+        1. I tried...
+        2. I checked...
+        3. I searched...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: What environment are you using?
+      options:
+        - Local Development
+        - Docker Container
+        - Self-hosted Server
+        - Cloud Deployment
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: system-info
+    attributes:
+      label: System Information
+      description: Please provide relevant system information
+      placeholder: |
+        - OS: [e.g., macOS 14.0, Ubuntu 22.04, Windows 11]
+        - Browser: [e.g., Chrome 120, Firefox 121]
+        - Node.js: [e.g., v18.17.0]
+        - Python: [e.g., 3.11.5]
+        - Docker: [e.g., 24.0.6]
+    validations:
+      required: false
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration
+      description: Please share relevant configuration (remove sensitive information)
+      render: yaml
+      placeholder: |
+        # Share relevant parts of your configuration
+        # Remember to remove API keys and sensitive data
+    validations:
+      required: false
+
+  - type: textarea
+    id: error-logs
+    attributes:
+      label: Error Logs/Output
+      description: Please share any error messages or relevant logs
+      render: shell
+      placeholder: Paste error messages or logs here...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is this for you?
+      options:
+        - Low - I can work around this
+        - Medium - This is affecting my work
+        - High - This is blocking my work
+        - Critical - Production is down
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues and discussions
+          required: true
+        - label: I have checked the documentation
+          required: true
+        - label: I have provided enough detail for others to help me
+          required: true
+        - label: I have removed any sensitive information from my request
+          required: true

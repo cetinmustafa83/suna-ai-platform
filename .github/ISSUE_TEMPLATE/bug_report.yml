@@ -1,0 +1,144 @@
+name: 🐛 Bug Report
+description: Create a report to help us improve
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! 🙏
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what happened!
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: A clear and concise description of what actually happened.
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots/Videos
+      description: If applicable, add screenshots or videos to help explain your problem.
+      placeholder: Drag and drop files here or click to upload
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is affected?
+      options:
+        - Frontend (React/Next.js)
+        - Backend (Python/FastAPI)
+        - Agent Runtime (Docker)
+        - Database (Supabase)
+        - CI/CD Pipeline
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of Suna are you running?
+      placeholder: "e.g., v1.0.0, main branch commit hash"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: What environment are you using?
+      options:
+        - Local Development
+        - Docker Container
+        - Self-hosted
+        - Cloud Deployment
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: system-info
+    attributes:
+      label: System Information
+      description: |
+        Please provide system information:
+      placeholder: |
+        - OS: [e.g., macOS 14.0, Ubuntu 22.04, Windows 11]
+        - Browser: [e.g., Chrome 120, Firefox 121, Safari 17]
+        - Node.js: [e.g., v18.17.0]
+        - Python: [e.g., 3.11.5]
+        - Docker: [e.g., 24.0.6]
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Please copy and paste any relevant error logs or stack traces.
+      render: shell
+      placeholder: Paste error logs here...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here.
+      placeholder: Any additional information that might be helpful...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to make sure this is not a duplicate
+          required: true
+        - label: I have provided all the requested information
+          required: true
+        - label: I am willing to help with testing the fix if needed
+          required: false

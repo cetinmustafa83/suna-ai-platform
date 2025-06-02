@@ -1,0 +1,160 @@
+name: ✨ Feature Request
+description: Suggest an idea for this project
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! 🚀
+        Help us understand what you'd like to see in Suna AI Platform.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like
+      placeholder: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe alternatives you've considered
+      placeholder: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component would this feature affect?
+      options:
+        - Frontend (React/Next.js)
+        - Backend (Python/FastAPI)
+        - Agent Runtime (Docker)
+        - Agent Tools
+        - Database (Supabase)
+        - API
+        - Documentation
+        - CI/CD Pipeline
+        - Multiple Components
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be useful
+        - High - Important for my use case
+        - Critical - Blocking my use case
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: How complex do you think this feature would be to implement?
+      options:
+        - Simple - Small change or addition
+        - Medium - Moderate development effort
+        - Complex - Significant development effort
+        - Very Complex - Major architectural changes
+        - I'm not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Describe specific use cases where this feature would be helpful
+      placeholder: |
+        1. Use case 1: [description]
+        2. Use case 2: [description]
+        3. Use case 3: [description]
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-stories
+    attributes:
+      label: User Stories
+      description: Write user stories that describe this feature
+      placeholder: |
+        As a [type of user], I want [some goal] so that [some reason].
+        
+        Example:
+        As a developer, I want to create custom agent tools so that I can extend the platform for my specific needs.
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What would need to be true for this feature to be considered complete?
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Criterion 3
+    validations:
+      required: false
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Wireframes
+      description: If applicable, add mockups, wireframes, or examples
+      placeholder: Drag and drop files here or describe the UI/UX
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request here
+      placeholder: Any additional information that might be helpful...
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Are you interested in contributing to this feature?
+      options:
+        - label: I would be interested in implementing this feature
+        - label: I would be willing to help with testing
+        - label: I would be willing to help with documentation
+        - label: I would be willing to provide feedback during development
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to make sure this is not a duplicate
+          required: true
+        - label: I have provided a clear description of the feature
+          required: true
+        - label: I have explained why this feature would be valuable
+          required: true

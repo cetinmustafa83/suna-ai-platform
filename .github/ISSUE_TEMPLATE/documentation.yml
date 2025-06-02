@@ -1,0 +1,111 @@
+name: 📚 Documentation Issue
+description: Report issues with documentation or suggest improvements
+title: "[DOCS] "
+labels: ["documentation", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us improve our documentation! 📚
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Documentation Issue Type
+      description: What type of documentation issue is this?
+      options:
+        - Missing Documentation
+        - Incorrect Information
+        - Outdated Information
+        - Unclear Instructions
+        - Broken Links
+        - Typos/Grammar
+        - Code Examples
+        - API Documentation
+        - Installation Guide
+        - Tutorial/Guide
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Where is the documentation issue located?
+      placeholder: "e.g., README.md, docs/api.md, inline code comments, line 45"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Content
+      description: What does the current documentation say? (copy/paste if applicable)
+      placeholder: Copy the current text or describe what's currently there
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: What's wrong with the current documentation?
+      placeholder: Describe the issue clearly and concisely
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: Provide specific suggestions for improvement
+    validations:
+      required: true
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Target Audience
+      description: Who is the primary audience for this documentation?
+      options:
+        - End Users
+        - Developers/Contributors
+        - System Administrators
+        - API Users
+        - Self-hosters
+        - All Users
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any additional context or examples that would be helpful
+      placeholder: Screenshots, code examples, related issues, etc.
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Are you interested in helping fix this documentation?
+      options:
+        - label: I would be willing to submit a PR to fix this
+        - label: I would be willing to help review the fix
+        - label: I would be willing to provide examples or content
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to make sure this is not a duplicate
+          required: true
+        - label: I have provided specific details about the documentation issue
+          required: true
